@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QITRO | Quantum Induced Traffic Route Optimization</title>
+  
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="/static/css/styles.css" />
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+
+  <!-- Top Application Header -->
+  <header class="app-header">
+    <div style="display:flex; align-items:center; gap:0.75rem;">
+      <div style="width:14px; height:14px; border-radius:50%; background:#06b6d4; box-shadow:0 0 12px #06b6d4;"></div>
+      <div>
+        <h1 style="font-size:1.15rem; font-weight:800; letter-spacing:0.04em;">
+          <span class="brand-badge">QITRO</span> &mdash; Quantum Induced Traffic Route Optimization
+        </h1>
+        <p style="font-size:0.72rem; color:var(--text-muted);">
+          Problem ID: <strong>26137</strong> | Org: <strong>Egreen Quanta</strong> | Team: <strong>QBITS</strong> | Theme: Transportation & Logistics
+        </p>
+      </div>
+    </div>
+    
+    <div style="display:flex; gap:0.6rem; align-items:center;">
+      <button id="btnViewDeliverables" class="btn-amber" style="font-size:0.75rem; padding:0.35rem 0.7rem;">
+        &#128220; Delivery Table (Expected Deliverables)
+      </button>
+      <button id="btnExportJson" class="glass-panel" style="font-size:0.75rem; padding:0.35rem 0.7rem;">
+        &#128190; JSON
+      </button>
+      <button id="btnExportCsv" class="glass-panel" style="font-size:0.75rem; padding:0.35rem 0.7rem;">
+        &#128196; CSV
+      </button>
+      <div style="padding:0.35rem 0.65rem; border-radius:6px; background:rgba(16,185,129,0.15); border:1px solid #10b981; color:#10b981; font-size:0.75rem; font-weight:700;">
+        &#9679; LIVE SYSTEM READY
+      </div>
+    </div>
+  </header>
+
+  <!-- Interactive Control Bar -->
+  <section class="control-bar">
+    <div class="ctrl-group">
+      <label>City & Road Graph</label>
+      <select id="citySelect">
+        <optgroup label="Pan-India National Highway Network">
+          <option value="india_national" selected>Pan-India National Highway Logistics (36 Major Hubs)</option>
+        </optgroup>
+        <optgroup label="Regional Logistics Corridors">
+          <option value="north_india">North India Regional Corridor (12 Cities)</option>
+          <option value="south_india">South India Regional Corridor (12 Cities)</option>
+          <option value="west_india">West India Regional Corridor (12 Cities)</option>
+          <option value="east_northeast">East & Northeast Corridor (12 Cities)</option>
+        </optgroup>
+        <optgroup label="Metropolitan Intra-City Grids">
+          <option value="mumbai">Mumbai Metropolitan Region (MMR)</option>
+          <option value="delhi">Delhi NCR Metropolitan Hub</option>
+          <option value="bengaluru">Bengaluru Silicon Corridor</option>
+          <option value="chennai">Chennai Metropolitan & Port Grid</option>
+          <option value="hyderabad">Hyderabad Cyberabad Corridor</option>
+          <option value="kolkata">Kolkata Metropolitan Network</option>
+          <option value="pune">Pune Industrial & Auto Corridor</option>
+          <option value="ahmedabad">Ahmedabad-Gandhinagar Corridor</option>
+        </optgroup>
+        <optgroup label="Synthetic Benchmarks">
+          <option value="smart_grid">Smart Grid Synthetic City (25 Nodes)</option>
+        </optgroup>
+      </select>
+    </div>
+
+    <div class="ctrl-group">
+      <label>Optimization Algorithm</label>
+      <select id="algoSelect">
+        <optgroup label="Quantum-Inspired Metaheuristics">
+          <option value="QPSO" selected>QPSO (Quantum Swarm Optimization)</option>
+          <option value="QGA">QGA (Quantum Genetic Algorithm)</option>
+          <option value="QSA">QSA (Quantum Simulated Annealing)</option>
+        </optgroup>
+        <optgroup label="Classical Benchmarks">
+          <option value="PSO">Classical PSO</option>
+          <option value="GA">Classical Genetic Algorithm</option>
+          <option value="SA">Classical Simulated Annealing</option>
+          <option value="CLARKE_WRIGHT">Clarke-Wright Savings Baseline</option>
+        </optgroup>
+      </select>
+    </div>
+
+    <div class="ctrl-group">
+      <label>Weather Condition</label>
+      <select id="weatherSelect">
+        <option value="clear">Clear Skies (1.0x)</option>
+        <option value="rain">Heavy Rain (1.25x Delay)</option>
+        <option value="heavy_storm">Severe Storm (1.65x Delay)</option>
+      </select>
+    </div>
+
+    <div class="ctrl-group">
+      <label>Fleet Size</label>
+      <input type="number" id="fleetSize" min="1" max="8" value="3" style="width:65px;">
+    </div>
+
+    <div class="ctrl-group">
+      <label>Capacity</label>
+      <input type="number" id="vehicleCap" min="20" max="250" value="100" style="width:75px;">
+    </div>
+
+    <div class="ctrl-group">
+      <label>Iterations</label>
+      <input type="number" id="iterations" min="20" max="500" value="120" style="width:75px;">
+    </div>
+
+    <div style="display:flex; gap:0.5rem; margin-top:14px;">
+      <button id="btnOptimize" class="btn-primary">
+        &#9889; Run Optimization
+      </button>
+      <button id="btnBenchmark" class="btn-emerald">
+        &#9878; Full Benchmark Arena
+      </button>
+      <button id="btnAddIncident" class="btn-rose">
+        &#9888; Inject Incident
+      </button>
+    </div>
+  </section>
+
+  <!-- Specialized Tab Navigation -->
+  <nav class="tab-nav-bar">
+    <button class="nav-tab-btn active" data-tab="tabMap">
+      &#128506; Live Traffic Map & Quantum Detours
+    </button>
+    <button class="nav-tab-btn" data-tab="tabConvergence">
+      &#128201; Solution Convergence & Quantum Entropy Profile
+    </button>
+    <button class="nav-tab-btn" data-tab="tabBenchmark">
+      &#9878; Systematic Metaheuristic Benchmarking
+    </button>
+    <button class="nav-tab-btn" data-tab="tabScalability">
+      &#128200; Statistical Hypothesis Testing & Scalability Profiling
+    </button>
+    <button class="nav-tab-btn" data-tab="tabTheory">
+      &#9883; Mathematical Foundations & Quantum Mechanics
+    </button>
+  </nav>
+
+  <!-- TAB 1: Live Traffic Map & Fleet Simulation -->
+  <section id="tabMap" class="tab-content-panel active">
+    <main class="main-layout" style="height:100%;">
+      <!-- Map View -->
+      <div class="glass-panel map-container">
+        <div style="position:absolute; top:12px; left:12px; z-index:1000; background:rgba(15,23,42,0.9); padding:0.4rem 0.8rem; border-radius:6px; border:1px solid var(--border-color); font-size:0.75rem; display:flex; align-items:center; gap:0.6rem;">
+          <span>Sim Clock: <strong id="simClock" style="color:#06b6d4;">08:00:00</strong></span>
+          <button id="btnSimPlay" class="btn-emerald" style="padding:0.2rem 0.6rem; font-size:0.7rem;">&#9658; Play Sim</button>
+        </div>
+        <div id="map"></div>
+      </div>
+
+      <!-- Right Sidebar -->
+      <div class="dashboard-sidebar">
+        <!-- KPI Row -->
+        <div class="metrics-row">
+          <div class="metric-card">
+            <div class="metric-label">Fitness Score</div>
+            <div class="metric-val" id="kpiFitness">--</div>
+          </div>
+          <div class="metric-card" style="border-left-color: #3b82f6;">
+            <div class="metric-label">Total Distance</div>
+            <div class="metric-val" id="kpiDistance">--</div>
+          </div>
+          <div class="metric-card" style="border-left-color: #10b981;">
+            <div class="metric-label">Travel Time</div>
+            <div class="metric-val" id="kpiTravelTime">--</div>
+          </div>
+          <div class="metric-card" style="border-left-color: #a855f7;">
+            <div class="metric-label">CO2 Footprint</div>
+            <div class="metric-val" id="kpiCO2">--</div>
+          </div>
+        </div>
+
+        <!-- Quantum Delta Well Visualizer -->
+        <div class="glass-panel quantum-visualizer-container quantum-border">
+          <div style="display:flex; justify-content:space-between; margin-bottom:0.35rem; align-items:center;">
+            <span style="font-size:0.75rem; font-weight:700; color:var(--quantum-cyan); text-transform:uppercase;">
+              &#9883; Quantum State Inspector & Wave Function Dynamics
+            </span>
+            <span style="font-size:0.7rem; color:var(--text-muted);">
+              Compute: <strong id="kpiCompTime" style="color:#fff;">--</strong>
+            </span>
+          </div>
+          <canvas id="quantumCanvas"></canvas>
+        </div>
+
+        <!-- Live Convergence Plot -->
+        <div class="glass-panel" style="padding:0.75rem; min-height:180px;">
+          <div style="font-size:0.75rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:0.3rem;">
+            Convergence Velocity: Cost vs Iterations
+          </div>
+          <div style="height:140px;">
+            <canvas id="convergenceChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Live Detour Log -->
+        <div class="glass-panel" style="padding:0.75rem;">
+          <div style="font-size:0.75rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:0.3rem;">
+            Dynamic Incident & Quantum Rerouting Stream
+          </div>
+          <div id="eventLogs" style="max-height:80px; overflow-y:auto; font-family:monospace; background:rgba(0,0,0,0.3); padding:0.4rem; border-radius:4px;">
+            <div style="color:#64748b; font-size:0.72rem;">No dynamic incidents active. Vehicles operating on nominal quantum paths.</div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </section>
+
+  <!-- TAB 2: Solution Convergence & Quantum Entropy Profile -->
+  <section id="tabConvergence" class="tab-content-panel">
+    <div class="analytics-container">
+      <div class="glass-panel" style="padding:1rem; display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <h2 style="font-size:1.1rem; color:var(--quantum-cyan);">Solution Convergence Profile & Quantum Phase-Space Entropy</h2>
+          <p style="font-size:0.75rem; color:var(--text-muted);">Tracks multi-run convergence trajectories with &plusmn;1&sigma; confidence bands, quantum entropy S(t), and adaptive &alpha;(t) parameter decay.</p>
+        </div>
+        <div style="display:flex; gap:0.5rem; align-items:center;">
+          <select id="convAlgoSelect" style="font-size:0.8rem;">
+            <option value="QPSO">QPSO (Quantum Swarm)</option>
+            <option value="QGA">QGA (Quantum Genetic)</option>
+            <option value="QSA">QSA (Quantum Annealing)</option>
+            <option value="PSO">Classical PSO</option>
+            <option value="GA">Classical GA</option>
+          </select>
+          <input type="number" id="convRunsInput" value="5" min="3" max="20" style="width:60px;" title="Number of runs">
+          <input type="number" id="convItersInput" value="100" min="20" max="300" style="width:70px;" title="Iterations">
+          <button id="btnRunConvergenceProfile" class="btn-primary" style="font-size:0.8rem;">
+            &#9889; Run Convergence Profile
+          </button>
+        </div>
+      </div>
+
+      <div id="convSummaryBox" style="display:grid; grid-template-columns:repeat(4, 1fr); gap:0.75rem;"></div>
+
+      <div style="display:grid; grid-template-columns:1.5fr 1fr; gap:1rem;">
+        <div class="glass-panel" style="padding:1rem; min-height:350px;">
+          <h3 style="font-size:0.85rem; color:#94a3b8; text-transform:uppercase; margin-bottom:0.5rem;">Multi-Run Convergence Envelope (&mu; &plusmn; 1&sigma;)</h3>
+          <div style="height:300px;">
+            <canvas id="advancedConvergenceChart"></canvas>
+          </div>
+        </div>
+
+        <div class="glass-panel" style="padding:1rem; min-height:350px;">
+          <h3 style="font-size:0.85rem; color:#94a3b8; text-transform:uppercase; margin-bottom:0.5rem;">Quantum Contraction &alpha;(t) & Entropy S(t)</h3>
+          <div style="height:300px;">
+            <canvas id="quantumEntropyChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB 3: Systematic Metaheuristic Benchmarking Arena -->
+  <section id="tabBenchmark" class="tab-content-panel">
+    <div class="analytics-container">
+      <div class="glass-panel" style="padding:1rem;">
+        <h2 style="font-size:1.1rem; color:#10b981; margin-bottom:0.3rem;">Systematic Metaheuristic Performance Benchmarking</h2>
+        <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:1rem;">Comprehensive side-by-side benchmarking across Quantum Metaheuristics (QPSO, QGA, QSA), Classical Metaheuristics (PSO, GA, SA), and Heuristic Baselines (Clarke-Wright).</p>
+        
+        <div style="overflow-x:auto;">
+          <table class="benchmark-table">
+            <thead>
+              <tr>
+                <th>Algorithm</th>
+                <th>Fitness (Mean &plusmn; Std)</th>
+                <th>Distance (km)</th>
+                <th>Travel Time</th>
+                <th>CO2 Footprint</th>
+                <th>Compute Latency</th>
+                <th>Feasibility %</th>
+              </tr>
+            </thead>
+            <tbody id="benchmarkTableBody">
+              <tr><td colspan="7" style="color:#64748b; text-align:center; padding:1.5rem;">Click 'Full Benchmark Arena' in the top bar to run multi-seed evaluation.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div id="wilcoxonBadges" style="display:grid; grid-template-columns:repeat(3, 1fr); gap:0.75rem; margin-top:1rem;"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB 4: Statistical Hypothesis Testing & Scalability Profiling -->
+  <section id="tabScalability" class="tab-content-panel">
+    <div class="analytics-container">
+      <!-- Hypothesis Testing Header -->
+      <div class="glass-panel" style="padding:1rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.8rem;">
+          <div>
+            <h2 style="font-size:1.1rem; color:var(--quantum-purple);">Statistical Hypothesis Testing & Scalability Profiling</h2>
+            <p style="font-size:0.75rem; color:var(--text-muted);">Parametric & Non-Parametric Hypothesis Tests (Wilcoxon Signed-Rank, Paired t-Test, Mann-Whitney U, Cohen's d) and Asymptotic Complexity Profiling (N=10..250 nodes).</p>
+          </div>
+          <div style="display:flex; gap:0.5rem; align-items:center;">
+            <select id="hypoQuantumAlgo" style="font-size:0.8rem;">
+              <option value="QPSO">QPSO (Target)</option>
+              <option value="QGA">QGA (Target)</option>
+              <option value="QSA">QSA (Target)</option>
+            </select>
+            <span style="color:#94a3b8; font-size:0.8rem;">vs</span>
+            <select id="hypoClassicalAlgo" style="font-size:0.8rem;">
+              <option value="PSO">Classical PSO (Baseline)</option>
+              <option value="GA">Classical GA (Baseline)</option>
+              <option value="SA">Classical SA (Baseline)</option>
+            </select>
+            <input type="number" id="hypoRunsInput" value="8" min="3" max="25" style="width:60px;" title="Trials">
+            <button id="btnRunHypothesisTesting" class="btn-primary" style="font-size:0.8rem;">
+              &#9878; Run Hypothesis Tests
+            </button>
+            <button id="btnRunScalability" class="btn-emerald" style="font-size:0.8rem;">
+              &#128200; Run Scalability Suite (N=10..250)
+            </button>
+          </div>
+        </div>
+
+        <div id="hypothesisResultCard"></div>
+      </div>
+
+      <!-- Scalability Grid -->
+      <div style="display:grid; grid-template-columns:1.2fr 1fr; gap:1rem;">
+        <div class="glass-panel" style="padding:1rem; min-height:350px;">
+          <h3 style="font-size:0.85rem; color:#94a3b8; text-transform:uppercase; margin-bottom:0.5rem;">Scalability Profiling Curve: Runtime vs Problem Scale N</h3>
+          <div style="height:280px;">
+            <canvas id="scalabilityChart"></canvas>
+          </div>
+        </div>
+
+        <div class="glass-panel" style="padding:1rem; min-height:350px;">
+          <h3 style="font-size:0.85rem; color:#94a3b8; text-transform:uppercase; margin-bottom:0.5rem;">Scale Performance Table (N=10..250)</h3>
+          <div style="overflow-x:auto;">
+            <table class="benchmark-table" style="font-size:0.75rem;">
+              <thead>
+                <tr>
+                  <th>Scale N</th>
+                  <th>Search Space</th>
+                  <th>QPSO Time</th>
+                  <th>PSO Time</th>
+                  <th>GA Time</th>
+                  <th>QPSO Fitness</th>
+                  <th>PSO Fitness</th>
+                  <th>Advantage</th>
+                </tr>
+              </thead>
+              <tbody id="scalabilityTableBody">
+                <tr><td colspan="8" style="color:#64748b; text-align:center; padding:1rem;">Click 'Run Scalability Suite' to evaluate runtime scaling across N=10..250.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB 5: Mathematical Foundations & Quantum Theory Center -->
+  <section id="tabTheory" class="tab-content-panel">
+    <div class="analytics-container">
+      <div class="glass-panel" style="padding:1rem;">
+        <h2 style="font-size:1.1rem; color:var(--quantum-cyan); margin-bottom:0.3rem;">Mathematical Foundations & Quantum-Inspired Mechanics</h2>
+        <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:1rem;">Formal theoretical formulations of Quantum Delta-Potential wells, Wave function collapse, Q-Bit Superposition, Quantum Rotation Gates, and Transverse-Field Quantum Tunneling.</p>
+        
+        <div id="quantumTheoryContent"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Deliverables Modal Window -->
+  <div class="modal-overlay" id="deliverablesModal">
+    <div class="modal-card">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem;">
+        <h2 style="font-size:1.1rem; color:var(--quantum-cyan);">Delivery Table (Expected Deliverables) &mdash; PS ID 26137</h2>
+        <button id="btnCloseModal" style="background:none; border:none; color:#fff; font-size:1.2rem; cursor:pointer;">&times;</button>
+      </div>
+      
+      <table class="benchmark-table" style="font-size:0.75rem;">
+        <thead>
+          <tr style="background:rgba(255,255,255,0.05);">
+            <th>ID</th>
+            <th>Deliverable Name</th>
+            <th>Technical Specification</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>DEL-01</strong></td>
+            <td>Mathematical Optimization Formulation</td>
+            <td>Multi-objective CVRP/VRPTW/DVRP formulation with BPR congestion model, CMEM emissions, and penalty functions.</td>
+            <td><span style="color:#10b981; font-weight:700;">&#10004; COMPLETE</span></td>
+          </tr>
+          <tr>
+            <td><strong>DEL-02</strong></td>
+            <td>Quantum-Inspired Metaheuristic Engine</td>
+            <td>QPSO with Delta-Potential well, QGA with Q-bits and Rotation Gates, QSA with Quantum Tunneling.</td>
+            <td><span style="color:#10b981; font-weight:700;">&#10004; COMPLETE</span></td>
+          </tr>
+          <tr>
+            <td><strong>DEL-03</strong></td>
+            <td>Classical Benchmarks & Baselines</td>
+            <td>Standard PSO, Classical GA (OX), Simulated Annealing, Clarke-Wright Savings, Greedy Nearest Neighbor.</td>
+            <td><span style="color:#10b981; font-weight:700;">&#10004; COMPLETE</span></td>
+          </tr>
+          <tr>
+            <td><strong>DEL-04</strong></td>
+            <td>Dynamic Network & Traffic Modeling</td>
+            <td>Pan-India National Highways (36 Hubs), 4 Regional Zones, and 8 Metropolitan road grids with live incident injection.</td>
+            <td><span style="color:#10b981; font-weight:700;">&#10004; COMPLETE</span></td>
+          </tr>
+          <tr>
+            <td><strong>DEL-05</strong></td>
+            <td>Benchmarking & Convergence Analytics Suite</td>
+            <td>Statistical Wilcoxon signed-rank tests, convergence curve analysis, speedup ratios, and CSV/JSON export.</td>
+            <td><span style="color:#10b981; font-weight:700;">&#10004; COMPLETE</span></td>
+          </tr>
+          <tr>
+            <td><strong>DEL-06</strong></td>
+            <td>Interactive Web Simulation Platform</td>
+            <td>Full-stack modern UI with Leaflet live fleet tracking, HTML5 Quantum wave visualizer, and scenario manager.</td>
+            <td><span style="color:#10b981; font-weight:700;">&#10004; COMPLETE</span></td>
+          </tr>
+          <tr>
+            <td><strong>DEL-07</strong></td>
+            <td>Documentation & Automated Test Suite</td>
+            <td>Automated test suite (pytest), REST API docs, and comprehensive architecture whitepaper.</td>
+            <td><span style="color:#10b981; font-weight:700;">&#10004; COMPLETE</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="/static/js/api.js"></script>
+  <script src="/static/js/map_view.js"></script>
+  <script src="/static/js/quantum_view.js"></script>
+  <script src="/static/js/benchmark_view.js"></script>
+  <script src="/static/js/advanced_analytics_view.js"></script>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

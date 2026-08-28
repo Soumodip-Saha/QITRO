@@ -1,0 +1,28 @@
+{
+  "instances": [
+    {
+      "id": "SOLOMON_C101_15",
+      "name": "Solomon C101 Clustered (15 Customers)",
+      "type": "VRPTW",
+      "capacity": 100.0,
+      "num_vehicles": 3,
+      "description": "Standard clustered customer distribution with tight time windows."
+    },
+    {
+      "id": "SOLOMON_R101_15",
+      "name": "Solomon R101 Random (15 Customers)",
+      "type": "VRPTW",
+      "capacity": 100.0,
+      "num_vehicles": 3,
+      "description": "Uniformly distributed random customer locations with time windows."
+    },
+    {
+      "id": "BENGALURU_TECH_15",
+      "name": "Bengaluru 15-Customer Dynamic Route",
+      "type": "DVRP",
+      "capacity": 80.0,
+      "num_vehicles": 3,
+      "description": "Real Bengaluru tech hub locations with time-dependent congestion waves."
+    }
+  ]
+}

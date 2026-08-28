@@ -1,0 +1,130 @@
+{
+  "cities": [
+    {
+      "id": "india_national",
+      "name": "Pan-India National Highway Network (36 Major Hubs)",
+      "category": "National",
+      "country": "India",
+      "center": [21.1458, 79.0882],
+      "zoom": 5,
+      "description": "Comprehensive nationwide logistics network spanning Golden Quadrilateral, North-South (NH44), East-West (NH27), and Coastal (NH66) Corridors across 36 major Indian freight hubs."
+    },
+    {
+      "id": "north_india",
+      "name": "North India Regional Corridor (12 Cities)",
+      "category": "Regional",
+      "country": "India",
+      "center": [28.6139, 77.2090],
+      "zoom": 6,
+      "description": "Northern trade and industrial corridor connecting Delhi NCR, Chandigarh, Jaipur, Lucknow, Kanpur, Agra, Amritsar, and Dehradun."
+    },
+    {
+      "id": "south_india",
+      "name": "South India Regional Corridor (12 Cities)",
+      "category": "Regional",
+      "country": "India",
+      "center": [12.9716, 77.5946],
+      "zoom": 6,
+      "description": "Southern tech, maritime, and automotive freight network spanning Bengaluru, Chennai, Hyderabad, Kochi, Coimbatore, and Visakhapatnam."
+    },
+    {
+      "id": "west_india",
+      "name": "West India Regional Corridor (12 Cities)",
+      "category": "Regional",
+      "country": "India",
+      "center": [19.0760, 72.8777],
+      "zoom": 6,
+      "description": "Western industrial powerhouse corridor linking Mumbai JNPT, Pune, Ahmedabad, Surat, Vadodara, Nashik, and Nagpur."
+    },
+    {
+      "id": "east_northeast",
+      "name": "East & Northeast Corridor (12 Cities)",
+      "category": "Regional",
+      "country": "India",
+      "center": [22.5726, 88.3639],
+      "zoom": 6,
+      "description": "Eastern trade and Northeast gateway corridor linking Kolkata, Bhubaneswar, Patna, Ranchi, Jamshedpur, Siliguri, and Guwahati."
+    },
+    {
+      "id": "mumbai",
+      "name": "Mumbai Metropolitan Region (MMR)",
+      "category": "Metropolitan",
+      "country": "India",
+      "center": [19.0760, 72.8777],
+      "zoom": 11,
+      "description": "High-density coastal metropolis including BKC, Nariman Point, Andheri MIDC, Thane, Vashi, and JNPT Port."
+    },
+    {
+      "id": "delhi",
+      "name": "Delhi NCR Metropolitan Hub",
+      "category": "Metropolitan",
+      "country": "India",
+      "center": [28.6139, 77.2090],
+      "zoom": 11,
+      "description": "Capital region network connecting Connaught Place, Cyber Hub Gurugram, Noida Sector 62, Okhla, and Aerocity."
+    },
+    {
+      "id": "bengaluru",
+      "name": "Bengaluru Silicon Corridor",
+      "category": "Metropolitan",
+      "country": "India",
+      "center": [12.9716, 77.5946],
+      "zoom": 12,
+      "description": "Tech capital road network spanning Majestic, Koramangala, Indiranagar, Electronic City, and Whitefield."
+    },
+    {
+      "id": "chennai",
+      "name": "Chennai Metropolitan & Port Grid",
+      "category": "Metropolitan",
+      "country": "India",
+      "center": [13.0827, 80.2707],
+      "zoom": 11,
+      "description": "Automotive and port logistics network covering Chennai Port, Guindy, OMR IT Corridor, and Sriperumbudur SEZ."
+    },
+    {
+      "id": "hyderabad",
+      "name": "Hyderabad Cyberabad Corridor",
+      "category": "Metropolitan",
+      "country": "India",
+      "center": [17.3850, 78.4867],
+      "zoom": 11,
+      "description": "HITEC City, Gachibowli Financial District, Secunderabad, and Shamshabad Airport logistics corridor."
+    },
+    {
+      "id": "kolkata",
+      "name": "Kolkata Metropolitan Network",
+      "category": "Metropolitan",
+      "country": "India",
+      "center": [22.5726, 88.3639],
+      "zoom": 11,
+      "description": "Howrah Freight Terminal, Salt Lake Sector V, New Town, Burrabazar, and Dankuni Multi-Modal Terminal."
+    },
+    {
+      "id": "pune",
+      "name": "Pune Industrial & Auto Corridor",
+      "category": "Metropolitan",
+      "country": "India",
+      "center": [18.5204, 73.8567],
+      "zoom": 11,
+      "description": "Shivajinagar, Hinjawadi IT Park, Chakan MIDC Auto Hub, Hadapsar, and Bhosari Industrial Estate."
+    },
+    {
+      "id": "ahmedabad",
+      "name": "Ahmedabad-Gandhinagar Corridor",
+      "category": "Metropolitan",
+      "country": "India",
+      "center": [23.0225, 72.5714],
+      "zoom": 11,
+      "description": "Kalupur Depot, SG Highway, Sanand Auto Hub, Naroda GIDC, and GIFT City Infocity."
+    },
+    {
+      "id": "smart_grid",
+      "name": "Smart Grid Synthetic City (25 Nodes)",
+      "category": "Synthetic",
+      "country": "Synthetic",
+      "center": [37.7749, -122.4194],
+      "zoom": 13,
+      "description": "Controlled 25-zone grid city designed for benchmark stress testing, arterial bottlenecks, and quantum scalability analysis."
+    }
+  ]
+}

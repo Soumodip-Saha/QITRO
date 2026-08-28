@@ -1,0 +1,341 @@
+/* QITRO - Quantum-Inspired Intelligent Traffic Route Optimizer Stylesheet */
+
+:root {
+  --bg-primary: #0b0f19;
+  --bg-secondary: #111827;
+  --bg-card: rgba(17, 24, 39, 0.85);
+  --bg-glass: rgba(30, 41, 59, 0.6);
+  --border-color: rgba(255, 255, 255, 0.1);
+  --quantum-cyan: #06b6d4;
+  --quantum-glow: #22d3ee;
+  --quantum-emerald: #10b981;
+  --quantum-purple: #a855f7;
+  --quantum-amber: #f59e0b;
+  --quantum-rose: #f43f5e;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-main);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+/* Glassmorphism utility */
+.glass-panel {
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+.quantum-border {
+  border: 1px solid rgba(6, 182, 212, 0.3);
+  box-shadow: 0 0 15px rgba(6, 182, 212, 0.15);
+}
+
+/* Header */
+.app-header {
+  border-bottom: 1px solid var(--border-color);
+  background: rgba(11, 15, 25, 0.95);
+  padding: 0.75rem 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.brand-badge {
+  background: linear-gradient(135deg, #06b6d4, #3b82f6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+
+/* Control Bar */
+.control-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.75rem 1.5rem;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.ctrl-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.ctrl-group label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+select, input, button {
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  padding: 0.45rem 0.85rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+select:focus, input:focus {
+  border-color: var(--quantum-cyan);
+  box-shadow: 0 0 8px rgba(6, 182, 212, 0.4);
+}
+
+button {
+  cursor: pointer;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
+button.btn-primary {
+  background: linear-gradient(135deg, #06b6d4, #0284c7);
+  border: none;
+  color: #fff;
+}
+
+button.btn-primary:hover {
+  background: linear-gradient(135deg, #22d3ee, #0369a1);
+  box-shadow: 0 0 12px rgba(6, 182, 212, 0.5);
+}
+
+button.btn-emerald {
+  background: linear-gradient(135deg, #10b981, #059669);
+  border: none;
+  color: #fff;
+}
+
+button.btn-emerald:hover {
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.5);
+}
+
+button.btn-amber {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  border: none;
+  color: #fff;
+}
+
+button.btn-rose {
+  background: linear-gradient(135deg, #f43f5e, #e11d48);
+  border: none;
+  color: #fff;
+}
+
+/* Layout Grid */
+.main-layout {
+  display: grid;
+  grid-template-columns: 1.25fr 1fr;
+  gap: 1rem;
+  padding: 1rem;
+  height: calc(100vh - 125px);
+}
+
+@media (max-width: 1200px) {
+  .main-layout {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+}
+
+.map-container {
+  height: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+}
+
+#map {
+  width: 100%;
+  height: 100%;
+  min-height: 520px;
+  background: #1e293b;
+}
+
+.dashboard-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+/* Metric Cards */
+.metrics-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+}
+
+.metric-card {
+  padding: 0.6rem 0.8rem;
+  background: rgba(30, 41, 59, 0.5);
+  border-radius: 8px;
+  border-left: 3px solid var(--quantum-cyan);
+}
+
+.metric-label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.metric-val {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #fff;
+  margin-top: 0.15rem;
+}
+
+/* Quantum Canvas Visualizer */
+.quantum-visualizer-container {
+  position: relative;
+  background: rgba(15, 23, 42, 0.9);
+  border-radius: 8px;
+  padding: 0.5rem;
+}
+
+#quantumCanvas {
+  width: 100%;
+  height: 140px;
+  background: #090d16;
+  border-radius: 6px;
+}
+
+/* Benchmark Comparison Table */
+.benchmark-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.benchmark-table th, .benchmark-table td {
+  padding: 0.45rem 0.6rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.benchmark-table th {
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+}
+
+.highlight-quantum {
+  color: var(--quantum-cyan);
+  font-weight: 700;
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.modal-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.modal-card {
+  width: 90%;
+  max-width: 800px;
+  max-height: 85vh;
+  overflow-y: auto;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+/* Tab Navigation Bar */
+.tab-nav-bar {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.5rem 1.5rem;
+  background: rgba(15, 23, 42, 0.95);
+  border-bottom: 1px solid var(--border-color);
+  overflow-x: auto;
+}
+
+.nav-tab-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  padding: 0.4rem 0.9rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.nav-tab-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.nav-tab-btn.active {
+  color: #fff;
+  background: rgba(6, 182, 212, 0.2);
+  border-color: var(--quantum-cyan);
+  box-shadow: 0 0 10px rgba(6, 182, 212, 0.3);
+}
+
+.tab-content-panel {
+  display: none;
+  height: calc(100vh - 170px);
+  overflow-y: auto;
+}
+
+.tab-content-panel.active {
+  display: block;
+}
+
+.analytics-container {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+

@@ -23,9 +23,9 @@ class MapView {
       zoomControl: true,
     });
 
-    // Dark Matter tile layer with CARTO API Key
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png?key=cb1_2h0d_1_0a7406526f817a7a3f138582', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    // Dark Matter tile layer
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
       subdomains: 'abcd',
       maxZoom: 19,
     }).addTo(this.map);

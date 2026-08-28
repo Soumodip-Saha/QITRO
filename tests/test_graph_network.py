@@ -101,6 +101,11 @@ def test_delhi_network_generation():
 def test_smart_grid_generation():
     net = create_smart_grid_network(4)
     assert len(net.nodes) == 16
+    assert "Dholera" in net.nodes[0].name
+    # Verify coordinates are in India (Gujarat region)
+    for node in net.nodes.values():
+        assert 21.0 <= node.lat <= 24.0
+        assert 71.0 <= node.lon <= 74.0
 
 
 def test_dijkstra_shortest_path():

@@ -427,22 +427,23 @@ def create_delhi_network() -> RoadNetwork:
 
 
 def create_smart_grid_network(grid_size: int = 5) -> RoadNetwork:
-    """Generates a synthetic grid city with arterial avenues and bottleneck bridges."""
-    net = RoadNetwork(f"Smart Grid {grid_size}x{grid_size} City")
-    base_lat, base_lon = 37.7749, -122.4194  # San Francisco coordinates base
+    """Generates a Greenfield Smart Grid synthetic city based on Dholera SIR (Special Investment Region, Gujarat, India)."""
+    net = RoadNetwork(f"India Dholera SIR Smart Grid ({grid_size}x{grid_size} City)")
+    base_lat, base_lon = 22.2400, 72.1800  # Dholera SIR Smart Industrial City, Gujarat, India
     step = 0.015
 
     idx = 0
     for r in range(grid_size):
         for c in range(grid_size):
             is_depot = (r == 0 and c == 0)
-            demand = 0.0 if is_depot else random.randint(10, 35)
-            tw_s = 28800 + random.randint(0, 7200)
-            tw_e = tw_s + random.randint(7200, 14400)
+            demand = 0.0 if is_depot else float(random.randint(10, 35))
+            tw_s = 28800.0 + float(random.randint(0, 7200))
+            tw_e = tw_s + float(random.randint(7200, 14400))
+            zone_name = "Dholera Central Freight Terminal [0,0]" if is_depot else f"Dholera Smart Industrial Sector [{r},{c}]"
             net.add_node(
                 Node(
                     node_id=idx,
-                    name=f"Zone [{r},{c}]",
+                    name=zone_name,
                     lat=base_lat + r * step,
                     lon=base_lon + c * step,
                     is_depot=is_depot,

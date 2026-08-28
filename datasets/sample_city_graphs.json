@@ -119,12 +119,12 @@
     },
     {
       "id": "smart_grid",
-      "name": "Smart Grid Synthetic City (25 Nodes)",
-      "category": "Synthetic",
-      "country": "Synthetic",
-      "center": [37.7749, -122.4194],
+      "name": "India Smart Grid Synthetic City (Dholera SIR 25 Zones)",
+      "category": "Synthetic (India)",
+      "country": "India",
+      "center": [22.2400, 72.1800],
       "zoom": 13,
-      "description": "Controlled 25-zone grid city designed for benchmark stress testing, arterial bottlenecks, and quantum scalability analysis."
+      "description": "Flagship Indian Greenfield Smart Industrial City Grid (Dholera SIR, Gujarat) modeled with 25 interconnected smart logistics sectors, arterial avenues, and automated freight corridors."
     }
   ]
 }

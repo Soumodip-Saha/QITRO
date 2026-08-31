@@ -94,5 +94,44 @@ def test_bpr_congestion_model():
     t_light = bpr.travel_time(free_flow_time=100.0, volume=500.0, capacity=1000.0)
     # Heavy congestion: volume = 2000, capacity = 1000
     t_heavy = bpr.travel_time(free_flow_time=100.0, volume=2000.0, capacity=1000.0)
-
     assert t_heavy > t_light
+
+
+def test_all_networks_feasibility():
+    from backend.core.graph.network import create_bengaluru_network, create_delhi_network, create_smart_grid_network
+    from backend.core.graph.india_networks import (
+        create_mumbai_network,
+        create_north_india_network,
+        create_south_india_network,
+        create_west_india_network,
+        create_east_northeast_network,
+        create_india_national_network,
+    )
+    from backend.app import build_vrp_problem_from_network
+    from backend.core.quantum.qpso import QPSOSolver
+    from backend.core.classical.baselines import ClarkeWrightSavingsSolver
+
+    networks = [
+        create_bengaluru_network(),
+        create_delhi_network(),
+        create_mumbai_network(),
+        create_smart_grid_network(),
+        create_north_india_network(),
+        create_south_india_network(),
+        create_west_india_network(),
+        create_east_northeast_network(),
+        create_india_national_network(),
+    ]
+
+    for net in networks:
+        prob = build_vrp_problem_from_network(net, num_vehicles=4, vehicle_capacity=100.0)
+        # Test QPSO
+        qpso = QPSOSolver(prob, swarm_size=25, max_iterations=30, seed=42)
+        q_sol = qpso.solve()
+        assert q_sol.is_feasible, f"QPSO infeasible on {net.name}: cap_viol={q_sol.total_capacity_violation}, tw_viol={q_sol.total_tw_violation_sec}"
+
+        # Test Clarke-Wright
+        cw = ClarkeWrightSavingsSolver(prob)
+        cw_sol = cw.solve()
+        assert cw_sol.is_feasible, f"Clarke-Wright infeasible on {net.name}: cap_viol={cw_sol.total_capacity_violation}, tw_viol={cw_sol.total_tw_violation_sec}"
+

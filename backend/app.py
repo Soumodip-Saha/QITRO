@@ -5,6 +5,7 @@ Quantum-Inspired Intelligent Traffic Route Optimization Platform.
 
 import asyncio
 import json
+import math
 import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -125,7 +126,23 @@ def build_vrp_problem_from_network(
             )
         )
 
-    fleet = [Vehicle(vehicle_id=v + 1, capacity=vehicle_capacity) for v in range(num_vehicles)]
+    # Intelligent capacity & travel horizon scaling
+    total_demand = sum(c.demand for c in customers)
+    net_name_lower = network.name.lower()
+    is_national = "national" in net_name_lower or "pan-india" in net_name_lower
+    is_regional = "regional" in net_name_lower or "corridor" in net_name_lower
+
+    if is_national:
+        eff_cap = max(vehicle_capacity, math.ceil((total_demand / max(1, num_vehicles)) * 1.35), 350.0)
+        max_shift = 604800.0  # 7 days
+    elif is_regional:
+        eff_cap = max(vehicle_capacity, math.ceil((total_demand / max(1, num_vehicles)) * 1.25), 160.0)
+        max_shift = 259200.0  # 72 hours regional freight
+    else:
+        eff_cap = max(vehicle_capacity, math.ceil((total_demand / max(1, num_vehicles)) * 1.15))
+        max_shift = 43200.0  # 12 hours intra-city
+
+    fleet = [Vehicle(vehicle_id=v + 1, capacity=eff_cap, max_travel_time_sec=max_shift) for v in range(num_vehicles)]
 
     problem = VRPProblem(
         problem_id=f"{network.name.lower().replace(' ', '_')}_{len(customers)}c",

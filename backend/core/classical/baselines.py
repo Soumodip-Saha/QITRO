@@ -112,6 +112,19 @@ class ClarkeWrightSavingsSolver:
 
         max_cap = self.problem.fleet[0].capacity if self.problem.fleet else 100.0
 
+        def check_tw_feasible(seq: List[int]) -> bool:
+            curr_t = self.problem.start_time_sec
+            curr_idx = 0
+            for cid in seq:
+                cust = self.problem.customer_map[cid]
+                travel = self.problem.time_matrix[curr_idx][cid]
+                curr_t += travel
+                if curr_t > cust.time_window_end:
+                    return False
+                curr_t = max(curr_t, cust.time_window_start) + cust.service_time
+                curr_idx = cid
+            return True
+
         for s, i, j in savings:
             r_i = route_of[i]
             r_j = route_of[j]
@@ -122,26 +135,34 @@ class ClarkeWrightSavingsSolver:
             route_i = routes[r_i]
             route_j = routes[r_j]
 
-            # Merge condition: i must be endpoint of route_i, j endpoint of route_j, and total demand <= capacity
+            # Merge condition: endpoint matching, total demand <= capacity, and TW feasible
             can_merge = False
             merged_list: List[int] = []
 
             if route_i[-1] == i and route_j[0] == j:
                 if loads[r_i] + loads[r_j] <= max_cap:
-                    can_merge = True
-                    merged_list = route_i + route_j
+                    cand = route_i + route_j
+                    if check_tw_feasible(cand):
+                        can_merge = True
+                        merged_list = cand
             elif route_i[0] == i and route_j[-1] == j:
                 if loads[r_i] + loads[r_j] <= max_cap:
-                    can_merge = True
-                    merged_list = route_j + route_i
+                    cand = route_j + route_i
+                    if check_tw_feasible(cand):
+                        can_merge = True
+                        merged_list = cand
             elif route_i[-1] == i and route_j[-1] == j:
                 if loads[r_i] + loads[r_j] <= max_cap:
-                    can_merge = True
-                    merged_list = route_i + list(reversed(route_j))
+                    cand = route_i + list(reversed(route_j))
+                    if check_tw_feasible(cand):
+                        can_merge = True
+                        merged_list = cand
             elif route_i[0] == i and route_j[0] == j:
                 if loads[r_i] + loads[r_j] <= max_cap:
-                    can_merge = True
-                    merged_list = list(reversed(route_i)) + route_j
+                    cand = list(reversed(route_i)) + route_j
+                    if check_tw_feasible(cand):
+                        can_merge = True
+                        merged_list = cand
 
             if can_merge:
                 new_load = loads[r_i] + loads[r_j]
@@ -154,10 +175,14 @@ class ClarkeWrightSavingsSolver:
                     route_of[node] = r_i
 
         final_raw_routes = list(routes.values())
-        while len(final_raw_routes) < len(self.problem.fleet):
+        num_v = len(self.problem.fleet)
+        if len(final_raw_routes) > num_v:
+            flat = [c for r in final_raw_routes for c in r]
+            final_raw_routes = self.evaluator.decode_permutation_to_routes(flat)
+        while len(final_raw_routes) < num_v:
             final_raw_routes.append([])
 
-        sol = self.evaluator.evaluate_routes(final_raw_routes[: len(self.problem.fleet)])
+        sol = self.evaluator.evaluate_routes(final_raw_routes[:num_v])
         sol.algorithm_name = "Clarke-Wright Savings"
         sol.computation_time_ms = (time.perf_counter() - start_time) * 1000.0
         sol.convergence_history = [sol.fitness_score]

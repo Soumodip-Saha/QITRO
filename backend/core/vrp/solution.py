@@ -282,27 +282,44 @@ class VRPEvaluator:
 
     def decode_permutation_to_routes(self, permutation: List[int]) -> List[List[int]]:
         """
-        Splits a permutation of all customer_ids into vehicle routes using greedy capacity heuristics.
+        Splits a permutation of all customer_ids into vehicle routes using
+        balanced capacity and travel horizon constraints.
         """
-        routes: List[List[int]] = [[] for _ in range(len(self.problem.fleet))]
+        num_v = len(self.problem.fleet)
+        routes: List[List[int]] = [[] for _ in range(num_v)]
         if not permutation:
             return routes
 
         v_idx = 0
-        curr_cap = self.problem.fleet[v_idx].capacity
         curr_load = 0.0
+        curr_time = self.problem.start_time_sec
+        curr_node = 0
 
         for cust_id in permutation:
             if cust_id not in self.problem.customer_map:
                 continue
             demand = self.problem.customer_map[cust_id].demand
-            if (curr_load + demand <= curr_cap) or (v_idx == len(self.problem.fleet) - 1):
+            service = self.problem.customer_map[cust_id].service_time
+            travel_time = self.problem.time_matrix[curr_node][cust_id]
+            ret_travel_time = self.problem.time_matrix[cust_id][0]
+
+            v_cap = self.problem.fleet[v_idx].capacity
+            v_max_time = self.problem.fleet[v_idx].max_travel_time_sec
+
+            proj_load = curr_load + demand
+            proj_duration = (curr_time + travel_time + service + ret_travel_time) - self.problem.start_time_sec
+
+            if (proj_load <= v_cap and proj_duration <= v_max_time) or (v_idx >= num_v - 1):
                 routes[v_idx].append(cust_id)
                 curr_load += demand
+                curr_time += (travel_time + service)
+                curr_node = cust_id
             else:
+                # Open next vehicle
                 v_idx += 1
-                curr_cap = self.problem.fleet[v_idx].capacity
                 routes[v_idx].append(cust_id)
                 curr_load = demand
+                curr_time = self.problem.start_time_sec + self.problem.time_matrix[0][cust_id] + service
+                curr_node = cust_id
 
         return routes

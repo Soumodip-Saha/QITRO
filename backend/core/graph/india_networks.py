@@ -168,39 +168,58 @@ def create_india_national_network() -> RoadNetwork:
 
 
 def create_north_india_network() -> RoadNetwork:
-    """North India Regional Logistics Corridor."""
+    """
+    North India Regional Logistics Corridor:
+    UP, Rajasthan, Punjab & Haryana as per specification.
+    """
     net = RoadNetwork("North India Regional Logistics Corridor")
     cities = [
         (0, "Delhi NCR Central Gateway (Depot)", 28.6139, 77.2090, True, 0.0, 0, 172800),
-        (1, "Gurugram Cyber & Auto Hub", 28.4595, 77.0266, False, 28.0, 0, 172800),
-        (2, "Noida Electronic City & Tech Park", 28.5355, 77.3910, False, 30.0, 0, 172800),
-        (3, "Chandigarh IT & Logistics Tricity", 30.7333, 76.7794, False, 26.0, 0, 172800),
-        (4, "Jaipur Sitapura Industrial Area", 26.9124, 75.7873, False, 32.0, 0, 172800),
-        (5, "Agra Transport Nagar Hub", 27.1767, 78.0081, False, 22.0, 0, 172800),
-        (6, "Lucknow Transport Nagar", 26.8467, 80.9462, False, 35.0, 0, 172800),
-        (7, "Kanpur Panki Industrial Estate", 26.4499, 80.3319, False, 30.0, 0, 172800),
-        (8, "Amritsar GT Road Terminal", 31.6340, 74.8723, False, 24.0, 0, 172800),
-        (9, "Dehradun Selaqui Pharma Hub", 30.3165, 78.0322, False, 20.0, 0, 172800),
-        (10, "Varanasi Shivpur Logistics Node", 25.3176, 82.9739, False, 25.0, 0, 172800),
+        # Uttar Pradesh
+        (1, "Lucknow Awadh Freight Hub", 26.8467, 80.9462, False, 30.0, 0, 172800),
+        (2, "Kanpur Panki Industrial Estate", 26.4499, 80.3319, False, 28.0, 0, 172800),
+        (3, "Agra Transport Nagar Hub", 27.1767, 78.0081, False, 25.0, 0, 172800),
+        (4, "Varanasi Shivpur Logistics Node", 25.3176, 82.9739, False, 25.0, 0, 172800),
+        (5, "Meerut Industrial Estate", 28.9845, 77.7064, False, 22.0, 0, 172800),
+        (6, "Allahabad (Prayagraj) Multi-Modal Terminal", 25.4358, 81.8463, False, 26.0, 0, 172800),
+        # Rajasthan
+        (7, "Jaipur Sitapura Industrial Area", 26.9124, 75.7873, False, 30.0, 0, 172800),
+        (8, "Jodhpur Thar Logistics Hub", 26.2389, 73.0243, False, 24.0, 0, 172800),
+        (9, "Udaipur Sukher Industrial Area", 24.5854, 73.7125, False, 22.0, 0, 172800),
+        (10, "Kota Ranpur Industrial Node", 25.2138, 75.8648, False, 25.0, 0, 172800),
+        # Punjab & Haryana
         (11, "Ludhiana Textile & Cycle Hub", 30.9010, 75.8573, False, 28.0, 0, 172800),
+        (12, "Amritsar GT Road Terminal", 31.6340, 74.8723, False, 24.0, 0, 172800),
+        (13, "Chandigarh IT & Logistics Tricity", 30.7333, 76.7794, False, 26.0, 0, 172800),
+        (14, "Faridabad IMT Auto Cluster", 28.4089, 77.3178, False, 24.0, 0, 172800),
     ]
 
     for c in cities:
         net.add_node(Node(c[0], c[2], c[3], c[1], c[4], c[5], float(c[6]), float(c[7])))
 
     conns = [
-        (0, 1, 90, 3200, 2200),
-        (0, 2, 85, 3000, 2100),
-        (0, 3, 90, 3400, 2400),
-        (3, 11, 85, 2800, 1900),
-        (11, 8, 85, 2800, 1800),
-        (0, 4, 90, 3200, 2200),
-        (0, 5, 100, 3600, 2300),
-        (5, 6, 95, 3400, 2100),
-        (6, 7, 90, 3400, 2500),
-        (6, 10, 100, 3500, 2100),
-        (0, 9, 80, 2400, 1600),
-        (3, 9, 75, 2000, 1300),
+        # Delhi Hub Connections
+        (0, 14, 90, 3200, 2200),  # Delhi - Faridabad
+        (0, 5, 95, 3400, 2300),   # Delhi - Meerut Expressway
+        (0, 3, 100, 3600, 2400),  # Delhi - Agra (Yamuna Expressway)
+        (0, 7, 90, 3200, 2200),   # Delhi - Jaipur (NH48)
+        (0, 13, 90, 3400, 2400),  # Delhi - Chandigarh (NH44)
+        # UP Trunk
+        (3, 2, 95, 3400, 2200),   # Agra - Kanpur
+        (2, 1, 95, 3500, 2400),   # Kanpur - Lucknow Expressway
+        (1, 4, 100, 3500, 2100),  # Lucknow - Varanasi (Purvanchal)
+        (2, 6, 85, 2800, 1900),   # Kanpur - Allahabad (Prayagraj)
+        (6, 4, 85, 2800, 1800),   # Allahabad - Varanasi
+        # Rajasthan Trunk
+        (7, 8, 85, 2600, 1700),   # Jaipur - Jodhpur (NH25)
+        (7, 10, 85, 2600, 1800),  # Jaipur - Kota (NH52)
+        (7, 9, 85, 2700, 1800),   # Jaipur - Udaipur (NH48)
+        (8, 9, 80, 2300, 1500),   # Jodhpur - Udaipur
+        (10, 3, 85, 2500, 1600),  # Kota - Agra
+        # Punjab & Haryana
+        (13, 11, 85, 2800, 1900), # Chandigarh - Ludhiana (NH5)
+        (11, 12, 85, 2800, 1800), # Ludhiana - Amritsar (NH44)
+        (14, 3, 90, 3000, 2100),  # Faridabad - Agra (NH44)
     ]
 
     for u, v, spd, cap, vol in conns:
@@ -212,41 +231,56 @@ def create_north_india_network() -> RoadNetwork:
 
 
 def create_south_india_network() -> RoadNetwork:
-    """South India Regional Logistics Corridor."""
+    """
+    South India Regional Logistics Corridor:
+    Kerala, Tamil Nadu, Andhra Pradesh, Karnataka as per specification.
+    """
     net = RoadNetwork("South India Regional Logistics Corridor")
     cities = [
         (0, "Bengaluru Central Freight Hub (Depot)", 12.9716, 77.5946, True, 0.0, 0, 172800),
-        (1, "Chennai Port & Auto SEZ", 13.0827, 80.2707, False, 40.0, 0, 172800),
-        (2, "Hyderabad Cyberabad & Pharma Hub", 17.3850, 78.4867, False, 38.0, 0, 172800),
-        (3, "Kochi Port & Vallarpadam ICTT", 9.9312, 76.2673, False, 32.0, 0, 172800),
-        (4, "Coimbatore Engineering SEZ", 11.0168, 76.9558, False, 26.0, 0, 172800),
-        (5, "Madurai South TN Logistics Hub", 9.9252, 78.1198, False, 24.0, 0, 172800),
-        (6, "Visakhapatnam Port City", 17.6868, 83.2185, False, 30.0, 0, 172800),
-        (7, "Vijayawada Auto Nagar Hub", 16.5062, 80.6480, False, 28.0, 0, 172800),
-        (8, "Mysuru Hebbal Industrial Area", 12.2958, 76.6394, False, 18.0, 0, 172800),
-        (9, "Mangaluru NMPT Gateway", 12.9141, 74.8560, False, 22.0, 0, 172800),
-        (10, "Kozhikode Malabar Trade Center", 11.2588, 75.7804, False, 20.0, 0, 172800),
-        (11, "Thiruvananthapuram Technopark", 8.5241, 76.9366, False, 22.0, 0, 172800),
+        # Kerala
+        (1, "Kochi Port & Vallarpadam ICTT", 9.9312, 76.2673, False, 30.0, 0, 172800),
+        (2, "Thiruvananthapuram Technopark", 8.5241, 76.9366, False, 24.0, 0, 172800),
+        (3, "Kozhikode Malabar Trade Center", 11.2588, 75.7804, False, 22.0, 0, 172800),
+        # Tamil Nadu
+        (4, "Coimbatore Engineering SEZ", 11.0168, 76.9558, False, 28.0, 0, 172800),
+        (5, "Madurai South TN Logistics Hub", 9.9252, 78.1198, False, 25.0, 0, 172800),
+        (6, "Tiruchirappalli Central Logistics Node", 10.7905, 78.7047, False, 24.0, 0, 172800),
+        (7, "Salem Steel & Transport Hub", 11.6643, 78.1460, False, 22.0, 0, 172800),
+        # Andhra Pradesh
+        (8, "Visakhapatnam Port City", 17.6868, 83.2185, False, 30.0, 0, 172800),
+        (9, "Vijayawada Auto Nagar Hub", 16.5062, 80.6480, False, 28.0, 0, 172800),
+        (10, "Guntur Spice & Agri Logistics Hub", 16.3067, 80.4365, False, 24.0, 0, 172800),
+        # Karnataka
+        (11, "Mysuru Hebbal Industrial Area", 12.2958, 76.6394, False, 22.0, 0, 172800),
+        (12, "Hubballi-Dharwad Industrial Corridor", 15.3647, 75.1240, False, 25.0, 0, 172800),
+        (13, "Mangaluru NMPT Gateway", 12.9141, 74.8560, False, 24.0, 0, 172800),
     ]
 
     for c in cities:
         net.add_node(Node(c[0], c[2], c[3], c[1], c[4], c[5], float(c[6]), float(c[7])))
 
     conns = [
-        (0, 1, 95, 3400, 2400),
-        (0, 2, 90, 3200, 2200),
-        (0, 8, 90, 3000, 2000),
-        (0, 9, 75, 2200, 1500),
-        (0, 4, 85, 2800, 1900),
-        (4, 3, 80, 2600, 1800),
-        (4, 5, 80, 2200, 1400),
-        (1, 5, 85, 2600, 1700),
-        (1, 7, 85, 2800, 1800),
-        (7, 6, 85, 2700, 1700),
-        (2, 7, 85, 2800, 1900),
-        (3, 11, 80, 2500, 1700),
-        (3, 10, 80, 2400, 1600),
-        (10, 9, 80, 2300, 1500),
+        # Bengaluru Hub
+        (0, 11, 95, 3400, 2400),  # Bengaluru - Mysuru Expressway
+        (0, 7, 90, 3200, 2200),   # Bengaluru - Salem (NH44)
+        (0, 12, 90, 3200, 2100),  # Bengaluru - Hubballi (NH48)
+        (0, 13, 80, 2400, 1600),  # Bengaluru - Mangaluru (NH75)
+        (0, 9, 85, 2800, 1900),   # Bengaluru - Vijayawada
+        # Tamil Nadu
+        (7, 4, 85, 2800, 1900),   # Salem - Coimbatore (NH544)
+        (7, 6, 85, 2600, 1700),   # Salem - Tiruchirappalli (NH81)
+        (6, 5, 85, 2600, 1700),   # Tiruchirappalli - Madurai (NH38)
+        (4, 5, 80, 2400, 1500),   # Coimbatore - Madurai (NH83)
+        # Kerala
+        (4, 1, 80, 2600, 1800),   # Coimbatore - Kochi (Palakkad Gap NH544)
+        (1, 2, 80, 2500, 1700),   # Kochi - Thiruvananthapuram (NH66)
+        (1, 3, 80, 2400, 1600),   # Kochi - Kozhikode (NH66)
+        (3, 13, 80, 2300, 1500),  # Kozhikode - Mangaluru (NH66)
+        # Andhra Pradesh
+        (9, 10, 90, 3200, 2200),  # Vijayawada - Guntur (Twin hubs NH16)
+        (9, 8, 85, 2700, 1700),   # Vijayawada - Visakhapatnam (NH16)
+        (10, 0, 85, 2600, 1700),  # Guntur - Bengaluru link
     ]
 
     for u, v, spd, cap, vol in conns:
@@ -258,41 +292,57 @@ def create_south_india_network() -> RoadNetwork:
 
 
 def create_west_india_network() -> RoadNetwork:
-    """West India Regional Logistics Corridor."""
-    net = RoadNetwork("West India Regional Logistics Corridor")
+    """
+    West & Central India Regional Logistics Corridor:
+    Gujarat, Maharashtra, MP, Chhattisgarh as per specification.
+    """
+    net = RoadNetwork("West & Central India Regional Logistics Corridor")
     cities = [
         (0, "Mumbai JNPT Port Freight Hub (Depot)", 19.0760, 72.8777, True, 0.0, 0, 172800),
-        (1, "Pune Auto & IT Corridor", 18.5204, 73.8567, False, 36.0, 0, 172800),
-        (2, "Ahmedabad Sanand & Naroda SEZ", 23.0225, 72.5714, False, 38.0, 0, 172800),
-        (3, "Surat Diamond Bourse & Hazira", 21.1702, 72.8311, False, 32.0, 0, 172800),
-        (4, "Vadodara Petrochemical Hub", 22.3072, 73.1812, False, 26.0, 0, 172800),
-        (5, "Nagpur MIHAN Multi-Modal Hub", 21.1458, 79.0882, False, 40.0, 0, 172800),
-        (6, "Nashik Ozar Engineering Center", 19.9975, 73.7898, False, 22.0, 0, 172800),
+        # Gujarat
+        (1, "Surat Diamond Bourse & Hazira", 21.1702, 72.8311, False, 30.0, 0, 172800),
+        (2, "Vadodara Petrochemical Hub", 22.3072, 73.1812, False, 26.0, 0, 172800),
+        (3, "Rajkot Engineering & Metoda GIDC", 22.3039, 70.8022, False, 24.0, 0, 172800),
+        # Maharashtra
+        (4, "Nagpur MIHAN Multi-Modal Hub", 21.1458, 79.0882, False, 35.0, 0, 172800),
+        (5, "Nashik Ozar Engineering Center", 19.9975, 73.7898, False, 22.0, 0, 172800),
+        (6, "Aurangabad (Chhatrapati Sambhajinagar) Shendra DMIC", 19.8762, 75.3433, False, 24.0, 0, 172800),
+        # Madhya Pradesh
         (7, "Indore Pithampur Auto Cluster", 22.7196, 75.8577, False, 30.0, 0, 172800),
-        (8, "Bhopal Mandideep Industrial Node", 23.2599, 77.4126, False, 25.0, 0, 172800),
-        (9, "Panaji Mormugao Port Goa", 15.4909, 73.8278, False, 20.0, 0, 172800),
-        (10, "Rajkot Engineering & Metoda GIDC", 22.3039, 70.8022, False, 24.0, 0, 172800),
-        (11, "Chhatrapati Sambhajinagar Shendra DMIC", 19.8762, 75.3433, False, 22.0, 0, 172800),
+        (8, "Bhopal Mandideep Industrial Node", 23.2599, 77.4126, False, 26.0, 0, 172800),
+        (9, "Jabalpur Defense & Engineering Hub", 23.1815, 79.9864, False, 22.0, 0, 172800),
+        (10, "Gwalior Logistics Node", 26.2183, 78.1828, False, 22.0, 0, 172800),
+        # Chhattisgarh
+        (11, "Raipur Steel Freight Hub", 21.2514, 81.6296, False, 26.0, 0, 172800),
+        (12, "Bhilai Steel Plant Logistics Complex", 21.2144, 81.3807, False, 25.0, 0, 172800),
     ]
 
     for c in cities:
         net.add_node(Node(c[0], c[2], c[3], c[1], c[4], c[5], float(c[6]), float(c[7])))
 
     conns = [
-        (0, 1, 100, 3800, 2900),
-        (0, 6, 85, 2800, 1900),
-        (0, 3, 85, 3600, 2700),
-        (3, 4, 90, 3200, 2300),
-        (4, 2, 100, 3500, 2400),
-        (2, 10, 85, 2600, 1700),
-        (0, 5, 110, 4000, 2500),
-        (6, 11, 80, 2200, 1500),
-        (11, 5, 90, 2800, 1800),
-        (1, 9, 80, 2400, 1600),
-        (0, 9, 75, 2200, 1500),
-        (4, 7, 85, 2600, 1700),
-        (7, 8, 90, 2800, 1800),
-        (7, 5, 80, 2200, 1400),
+        # Mumbai Hub
+        (0, 1, 85, 3600, 2700),   # Mumbai - Surat (NH48)
+        (0, 5, 85, 2800, 1900),   # Mumbai - Nashik (NH160)
+        (0, 6, 100, 3600, 2400),  # Mumbai - Aurangabad (Samruddhi Mahamarg)
+        (0, 4, 110, 4000, 2500),  # Mumbai - Nagpur (Samruddhi Mahamarg)
+        # Gujarat
+        (1, 2, 90, 3200, 2300),   # Surat - Vadodara (NH48)
+        (2, 3, 90, 3200, 2200),   # Vadodara - Rajkot
+        (2, 7, 85, 2600, 1700),   # Vadodara - Indore (NH47)
+        # Maharashtra
+        (5, 6, 85, 2600, 1700),   # Nashik - Aurangabad
+        (6, 4, 100, 3500, 2100),  # Aurangabad - Nagpur
+        # Madhya Pradesh
+        (7, 8, 90, 2800, 1800),   # Indore - Bhopal
+        (8, 9, 85, 2600, 1600),   # Bhopal - Jabalpur (NH45)
+        (8, 10, 85, 2600, 1600),  # Bhopal - Gwalior (NH46)
+        (4, 8, 85, 2600, 1600),   # Nagpur - Bhopal (NH46)
+        (4, 9, 85, 2600, 1600),   # Nagpur - Jabalpur (NH44)
+        # Chhattisgarh
+        (4, 11, 85, 2600, 1700),  # Nagpur - Raipur (NH53)
+        (11, 12, 90, 3200, 2100), # Raipur - Bhilai (NH53 twin steel cities)
+        (9, 11, 80, 2200, 1400),  # Jabalpur - Raipur (NH30)
     ]
 
     for u, v, spd, cap, vol in conns:
@@ -304,39 +354,54 @@ def create_west_india_network() -> RoadNetwork:
 
 
 def create_east_northeast_network() -> RoadNetwork:
-    """East & Northeast India Regional Logistics Corridor."""
+    """
+    East & Northeast India Regional Logistics Corridor:
+    Bihar, Odisha, Jharkhand, West Bengal, Assam as per specification.
+    """
     net = RoadNetwork("East & Northeast India Logistics Corridor")
     cities = [
         (0, "Kolkata Dankuni Freight Terminal (Depot)", 22.5726, 88.3639, True, 0.0, 0, 172800),
-        (1, "Bhubaneswar Mancheswar Industrial Area", 20.2961, 85.8245, False, 32.0, 0, 172800),
-        (2, "Patna Fatuha Multi-Modal Terminal", 25.5941, 85.1376, False, 35.0, 0, 172800),
-        (3, "Ranchi Namkum Industrial Area", 23.3441, 85.3096, False, 28.0, 0, 172800),
-        (4, "Jamshedpur Adityapur Auto Complex", 22.8046, 86.2029, False, 30.0, 0, 172800),
-        (5, "Siliguri North Bengal Transport Hub", 26.7271, 88.3953, False, 34.0, 0, 172800),
-        (6, "Guwahati North Guwahati Inland Port", 26.1445, 91.7362, False, 38.0, 0, 172800),
-        (7, "Shillong Byrnihat Industrial Corridor", 25.5788, 91.8933, False, 18.0, 0, 172800),
-        (8, "Durgapur Steel City Hub", 23.5204, 87.3119, False, 24.0, 0, 172800),
-        (9, "Asansol Burnpur Engineering Node", 23.6889, 86.9661, False, 22.0, 0, 172800),
-        (10, "Cuttack Jagatpur Industrial Estate", 20.4625, 85.8828, False, 20.0, 0, 172800),
-        (11, "Agartala Integrated Checkpost Hub", 23.8315, 91.2868, False, 20.0, 0, 172800),
+        # Bihar
+        (1, "Patna Fatuha Multi-Modal Terminal", 25.5941, 85.1376, False, 32.0, 0, 172800),
+        (2, "Gaya Industrial & Pilgrimage Node", 24.7955, 85.0002, False, 22.0, 0, 172800),
+        # Odisha
+        (3, "Bhubaneswar Mancheswar Industrial Area", 20.2961, 85.8245, False, 30.0, 0, 172800),
+        (4, "Cuttack Jagatpur Industrial Estate", 20.4625, 85.8828, False, 24.0, 0, 172800),
+        # Jharkhand
+        (5, "Ranchi Namkum Industrial Area", 23.3441, 85.3096, False, 28.0, 0, 172800),
+        (6, "Jamshedpur Adityapur Auto Complex", 22.8046, 86.2029, False, 30.0, 0, 172800),
+        (7, "Dhanbad Coalfield Freight Hub", 23.7957, 86.4304, False, 26.0, 0, 172800),
+        # West Bengal
+        (8, "Asansol Burnpur Engineering Node", 23.6889, 86.9661, False, 24.0, 0, 172800),
+        (9, "Siliguri North Bengal Transport Hub", 26.7271, 88.3953, False, 30.0, 0, 172800),
+        (10, "Durgapur Steel City Hub", 23.5204, 87.3119, False, 25.0, 0, 172800),
+        # Assam
+        (11, "Guwahati North Guwahati Inland Port", 26.1445, 91.7362, False, 35.0, 0, 172800),
     ]
 
     for c in cities:
         net.add_node(Node(c[0], c[2], c[3], c[1], c[4], c[5], float(c[6]), float(c[7])))
 
     conns = [
-        (0, 1, 85, 3000, 2100),
-        (1, 10, 75, 2400, 1600),
-        (0, 4, 85, 2600, 1800),
-        (4, 3, 80, 2200, 1500),
-        (0, 8, 90, 3000, 2000),
-        (8, 9, 85, 2600, 1700),
-        (9, 3, 80, 2200, 1400),
-        (9, 2, 80, 2400, 1600),
-        (0, 5, 80, 2500, 1700),
-        (5, 6, 80, 2400, 1600),
-        (6, 7, 70, 1800, 1200),
-        (6, 11, 65, 1600, 1100),
+        # Kolkata Hub Connections
+        (0, 10, 90, 3200, 2200),  # Kolkata - Durgapur Expressway (NH19)
+        (0, 6, 85, 2600, 1800),   # Kolkata - Jamshedpur (NH16/NH18)
+        (0, 3, 85, 3000, 2100),   # Kolkata - Bhubaneswar (NH16)
+        (0, 9, 80, 2500, 1700),   # Kolkata - Siliguri (NH12/NH27)
+        # West Bengal & Jharkhand
+        (10, 8, 85, 2600, 1700),  # Durgapur - Asansol (NH19)
+        (8, 7, 85, 2600, 1700),   # Asansol - Dhanbad (NH19)
+        (7, 5, 80, 2200, 1400),   # Dhanbad - Ranchi (NH320)
+        (6, 5, 80, 2200, 1500),   # Jamshedpur - Ranchi (NH43)
+        # Bihar
+        (7, 2, 85, 2600, 1600),   # Dhanbad - Gaya (NH19)
+        (2, 1, 80, 2400, 1600),   # Gaya - Patna (NH22)
+        (8, 1, 80, 2400, 1600),   # Asansol - Patna
+        # Odisha
+        (3, 4, 90, 3200, 2200),   # Bhubaneswar - Cuttack (NH16)
+        (4, 6, 80, 2200, 1400),   # Cuttack - Jamshedpur (NH20)
+        # Assam & Northeast Gateway
+        (9, 11, 80, 2400, 1600),  # Siliguri - Guwahati (NH27 East-West Corridor)
     ]
 
     for u, v, spd, cap, vol in conns:

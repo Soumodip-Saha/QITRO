@@ -47,20 +47,24 @@ class QGASolver:
             random.seed(seed)
             np.random.seed(seed)
 
-    def _initialize_q_chromosomes(self) -> Tuple[np.ndarray, np.ndarray]:
+    def _initialize_q_chromosomes(self) -> np.ndarray:
         """
-        Initializes Q-bit population in equal superposition:
-        alpha = 1/sqrt(2), beta = 1/sqrt(2) (angles theta = pi/4)
+        Component 2: Quantum Superposition (Global Grid Exploration)
+        Initializes the entire Q-bit population in equal superposition:
+        alpha = 1/sqrt(2), beta = 1/sqrt(2) (angles theta = pi/4, 50/50 probability).
+        Allows evaluating all possible grid choices simultaneously to avoid local optima.
         """
         # Theta representation: alpha = cos(theta), beta = sin(theta)
-        # Guarantees alpha^2 + beta^2 = 1 strictly.
+        # Strictly guarantees |alpha|^2 + |beta|^2 = 1.
         theta = np.full((self.pop_size, self.num_dim), math.pi / 4.0)
         return theta
 
     def _collapse_and_decode(self, theta: np.ndarray) -> Tuple[np.ndarray, List[List[int]]]:
         """
+        Component 1: Q-Bit Representation (The Routes)
+        Each route choice is stored as a Q-bit holding probability amplitudes [alpha, beta]^T.
         Observes/collapses quantum states based on probability |beta|^2 = sin^2(theta)
-        and converts continuous probabilities to customer permutations.
+        and converts continuous probability amplitudes to customer route permutations.
         """
         beta_squared = np.sin(theta) ** 2
         # Stochastic observation with quantum noise
@@ -84,12 +88,21 @@ class QGASolver:
         generation: int,
     ) -> np.ndarray:
         """
-        Applies Quantum Rotation Gate: theta_new = theta + Delta_theta
-        where Delta_theta direction guides individuals toward the global best state.
+        Component 3: Quantum Rotation Gates (Dynamic Updating)
+        Uses unitary rotation matrix U(Delta_theta) to dynamically steer Q-bit probabilities.
+        Real-time traffic data (congestion metrics, BPR delay functions, distances) feeds
+        into the system, updating the rotation step toward the least-congested, optimal routes.
         """
         # Dynamic rotation step size (decays as generations advance)
         decay = 1.0 - 0.7 * (generation / max(1, self.max_generations))
         step = self.rotation_step_base * decay
+
+        # Compute traffic congestion guidance weights from problem time matrix
+        if self.problem.time_matrix and len(self.problem.time_matrix) > 1:
+            depot_travel = np.array([self.problem.time_matrix[0][c.customer_id] for c in self.problem.customers])
+            norm_traffic = depot_travel / max(1.0, float(np.max(depot_travel)))
+        else:
+            norm_traffic = np.zeros(self.num_dim)
 
         new_theta = np.copy(theta)
         for i in range(self.pop_size):
@@ -97,12 +110,14 @@ class QGASolver:
                 # Elite doesn't rotate away
                 continue
 
-            # Quantum rotation table heuristic:
+            # Quantum rotation matrix heuristic:
             # If current state angle < best state angle, rotate positively (+step)
-            # Else rotate negatively (-step)
+            # Else rotate negatively (-step), guided by congestion gradient
             diff = best_theta - theta[i]
-            delta_theta = np.sign(diff) * step
-            # Add stochastic quantum tunneling component
+            traffic_bias = 0.05 * (0.5 - norm_traffic) * step
+            delta_theta = np.sign(diff) * step + traffic_bias
+            
+            # Add stochastic quantum tunneling component to escape deep local basins
             delta_theta += np.random.normal(0, 0.1 * step, size=self.num_dim)
 
             new_theta[i] = theta[i] + delta_theta

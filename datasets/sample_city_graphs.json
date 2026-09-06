@@ -11,39 +11,39 @@
     },
     {
       "id": "north_india",
-      "name": "North India Regional Corridor (12 Cities)",
+      "name": "North India Regional Corridor (UP, Rajasthan, Punjab & Haryana - 14 Hubs)",
       "category": "Regional",
       "country": "India",
       "center": [28.6139, 77.2090],
       "zoom": 6,
-      "description": "Northern trade and industrial corridor connecting Delhi NCR, Chandigarh, Jaipur, Lucknow, Kanpur, Agra, Amritsar, and Dehradun."
+      "description": "Northern freight corridor connecting Uttar Pradesh (Lucknow, Kanpur, Agra, Varanasi, Meerut, Prayagraj), Rajasthan (Jaipur, Jodhpur, Udaipur, Kota), and Punjab/Haryana (Ludhiana, Amritsar, Chandigarh, Faridabad)."
     },
     {
       "id": "south_india",
-      "name": "South India Regional Corridor (12 Cities)",
+      "name": "South India Regional Corridor (Kerala, TN, AP & Karnataka - 13 Hubs)",
       "category": "Regional",
       "country": "India",
       "center": [12.9716, 77.5946],
       "zoom": 6,
-      "description": "Southern tech, maritime, and automotive freight network spanning Bengaluru, Chennai, Hyderabad, Kochi, Coimbatore, and Visakhapatnam."
+      "description": "Southern multimodal corridor spanning Kerala (Kochi, Thiruvananthapuram, Kozhikode), Tamil Nadu (Coimbatore, Madurai, Tiruchirappalli, Salem), Andhra Pradesh (Visakhapatnam, Vijayawada, Guntur), and Karnataka (Mysuru, Hubballi-Dharwad, Mangaluru)."
     },
     {
       "id": "west_india",
-      "name": "West India Regional Corridor (12 Cities)",
+      "name": "West & Central India Corridor (Gujarat, Maharashtra, MP & Chhattisgarh - 12 Hubs)",
       "category": "Regional",
       "country": "India",
       "center": [19.0760, 72.8777],
       "zoom": 6,
-      "description": "Western industrial powerhouse corridor linking Mumbai JNPT, Pune, Ahmedabad, Surat, Vadodara, Nashik, and Nagpur."
+      "description": "Western & Central industrial network linking Gujarat (Surat, Vadodara, Rajkot), Maharashtra (Nagpur, Nashik, Aurangabad), Madhya Pradesh (Indore, Bhopal, Jabalpur, Gwalior), and Chhattisgarh (Raipur, Bhilai)."
     },
     {
       "id": "east_northeast",
-      "name": "East & Northeast Corridor (12 Cities)",
+      "name": "East & Northeast Corridor (Bihar, Odisha, Jharkhand, WB & Assam - 11 Hubs)",
       "category": "Regional",
       "country": "India",
       "center": [22.5726, 88.3639],
       "zoom": 6,
-      "description": "Eastern trade and Northeast gateway corridor linking Kolkata, Bhubaneswar, Patna, Ranchi, Jamshedpur, Siliguri, and Guwahati."
+      "description": "Eastern trade and Northeast gateway linking Bihar (Patna, Gaya), Odisha (Bhubaneswar, Cuttack), Jharkhand (Ranchi, Jamshedpur, Dhanbad), West Bengal (Asansol, Siliguri, Durgapur), and Assam (Guwahati)."
     },
     {
       "id": "mumbai",

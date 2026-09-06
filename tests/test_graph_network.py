@@ -43,19 +43,19 @@ def test_india_national_network_generation():
 
 def test_regional_networks():
     north = create_north_india_network()
-    assert len(north.nodes) == 12
+    assert len(north.nodes) == 15  # Depot + 14 customer cities
     assert north.nodes[0].is_depot
 
     south = create_south_india_network()
-    assert len(south.nodes) == 12
+    assert len(south.nodes) == 14  # Depot + 13 customer cities
     assert south.nodes[0].is_depot
 
     west = create_west_india_network()
-    assert len(west.nodes) == 12
+    assert len(west.nodes) == 13  # Depot + 12 customer cities
     assert west.nodes[0].is_depot
 
     east_ne = create_east_northeast_network()
-    assert len(east_ne.nodes) == 12
+    assert len(east_ne.nodes) == 12  # Depot + 11 customer cities
     assert east_ne.nodes[0].is_depot
 
 

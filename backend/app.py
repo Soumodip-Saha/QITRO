@@ -331,6 +331,16 @@ async def run_benchmark(req: BenchmarkRequest):
 @app.post("/api/incident")
 async def add_incident(req: IncidentRequest):
     global CURRENT_NETWORK, CURRENT_SIMULATOR
+
+    # Validate that edge (u, v) or (v, u) exists in the network
+    edge_forward = (req.edge_u, req.edge_v) in CURRENT_NETWORK.edges
+    edge_reverse = (req.edge_v, req.edge_u) in CURRENT_NETWORK.edges
+    if not edge_forward and not edge_reverse:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Corridor between Node {req.edge_u} and Node {req.edge_v} does not exist in the road network. Please choose a connected road segment."
+        )
+
     incident_id = f"inc_{req.edge_u}_{req.edge_v}_{int(CURRENT_NETWORK.sim_time)}"
     inc = TrafficIncident(
         incident_id=incident_id,

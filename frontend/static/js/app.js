@@ -198,42 +198,64 @@ document.addEventListener('DOMContentLoaded', async () => {
     const nodeMap = {};
     currentNetwork.nodes.forEach(n => { nodeMap[n.id] = n; });
 
-    let optionsHtml = '';
+    const edgeSet = new Set();
+    if (currentNetwork.edges) {
+      currentNetwork.edges.forEach(e => {
+        edgeSet.add(`${e.u}_${e.v}`);
+        edgeSet.add(`${e.v}_${e.u}`);
+      });
+    }
 
-    // If there's an active solution, prioritize route legs
+    let optionsHtml = '';
+    const addedPairs = new Set();
+
+    // If there's an active solution, prioritize route legs that are real connected edges
     if (currentSolution && currentSolution.routes && currentSolution.routes.length > 0) {
-      optionsHtml += `<optgroup label="Corridors on Active Fleet Routes">`;
+      let routeLegsHtml = '';
       currentSolution.routes.forEach(route => {
         if (route.detailed_node_path && route.detailed_node_path.length >= 2) {
           const path = route.detailed_node_path;
           for (let i = 0; i < path.length - 1; i++) {
             const u = path[i];
             const v = path[i + 1];
+            if (!edgeSet.has(`${u}_${v}`) && !edgeSet.has(`${v}_${u}`)) continue;
+            const canonicalKey = u < v ? `${u}_${v}` : `${v}_${u}`;
+            if (addedPairs.has(canonicalKey)) continue;
+            addedPairs.add(canonicalKey);
+
             const uName = nodeMap[u]?.name || `Node ${u}`;
             const vName = nodeMap[v]?.name || `Node ${v}`;
             const isSel = (selectedU !== null && ((u === selectedU && v === selectedV) || (u === selectedV && v === selectedU)));
-            optionsHtml += `<option value="${u}_${v}" ${isSel ? 'selected' : ''}>[Route #${route.vehicle_id}] ${uName} ↔ ${vName}</option>`;
+            routeLegsHtml += `<option value="${u}_${v}" ${isSel ? 'selected' : ''}>[Route #${route.vehicle_id}] ${uName} ↔ ${vName}</option>`;
           }
         }
       });
-      optionsHtml += `</optgroup>`;
+      if (routeLegsHtml) {
+        optionsHtml += `<optgroup label="Corridors on Active Fleet Routes">${routeLegsHtml}</optgroup>`;
+      }
     }
 
-    // All network road links
+    // All connected road network corridors
     if (currentNetwork.edges && currentNetwork.edges.length > 0) {
-      optionsHtml += `<optgroup label="All Road Network Corridors">`;
+      let networkEdgesHtml = '';
       currentNetwork.edges.forEach(e => {
+        const canonicalKey = e.u < e.v ? `${e.u}_${e.v}` : `${e.v}_${e.u}`;
+        if (addedPairs.has(canonicalKey)) return;
+        addedPairs.add(canonicalKey);
+
         const uName = nodeMap[e.u]?.name || `Node ${e.u}`;
         const vName = nodeMap[e.v]?.name || `Node ${e.v}`;
         const isSel = (selectedU !== null && ((e.u === selectedU && e.v === selectedV) || (e.u === selectedV && e.v === selectedU)));
-        optionsHtml += `<option value="${e.u}_${e.v}" ${isSel ? 'selected' : ''}>${uName} ↔ ${vName} (${e.distance_km} km)</option>`;
+        networkEdgesHtml += `<option value="${e.u}_${e.v}" ${isSel ? 'selected' : ''}>${uName} ↔ ${vName} (${e.distance_km} km)</option>`;
       });
-      optionsHtml += `</optgroup>`;
+      if (networkEdgesHtml) {
+        optionsHtml += `<optgroup label="All Connected Highway Corridors">${networkEdgesHtml}</optgroup>`;
+      }
     }
 
     select.innerHTML = optionsHtml;
 
-    // Pre-select first option if none selected
+    // Pre-select chosen option or first option
     if (selectedU !== null && selectedV !== null) {
       setCorridorInputFields(selectedU, selectedV);
     } else if (select.value) {
@@ -246,6 +268,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const inputU = document.getElementById('incidentNodeU');
     const inputV = document.getElementById('incidentNodeV');
     const preview = document.getElementById('corridorPreviewText');
+    const submitBtn = document.getElementById('btnConfirmInjectIncident');
 
     if (inputU) inputU.value = u;
     if (inputV) inputV.value = v;
@@ -256,8 +279,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     const uName = nodeMap[u]?.name || `Node ${u}`;
     const vName = nodeMap[v]?.name || `Node ${v}`;
+
+    const edgeSet = new Set();
+    if (currentNetwork && currentNetwork.edges) {
+      currentNetwork.edges.forEach(e => {
+        edgeSet.add(`${e.u}_${e.v}`);
+        edgeSet.add(`${e.v}_${e.u}`);
+      });
+    }
+
+    const isValid = edgeSet.has(`${u}_${v}`) || edgeSet.has(`${v}_${u}`);
+
     if (preview) {
-      preview.innerHTML = `Selected Corridor: <strong>${uName} (Node ${u})</strong> &harr; <strong>${vName} (Node ${v})</strong>`;
+      if (isValid) {
+        preview.innerHTML = `Selected Corridor: <strong>${uName} (Node ${u})</strong> &harr; <strong>${vName} (Node ${v})</strong> <span style="color:#10b981; font-weight:bold;">✔ Connected Highway Link</span>`;
+        if (submitBtn) submitBtn.disabled = false;
+        mapView.highlightEdge(u, v);
+      } else {
+        preview.innerHTML = `<span style="color:#ef4444; font-weight:bold;">⚠️ DISCONNECTED PORTION:</span> No direct road connects <strong>${uName}</strong> and <strong>${vName}</strong>. Please choose a connected corridor from the dropdown above.`;
+        if (submitBtn) submitBtn.disabled = true;
+        mapView.clearHighlightEdge();
+      }
     }
   }
 
@@ -321,14 +363,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   document.getElementById('btnCloseIncidentModal')?.addEventListener('click', () => {
     incidentModal.classList.remove('active');
+    mapView.clearHighlightEdge();
   });
 
   document.getElementById('btnCancelIncidentModal')?.addEventListener('click', () => {
     incidentModal.classList.remove('active');
+    mapView.clearHighlightEdge();
   });
 
   document.getElementById('btnCloseActiveBlocksModal')?.addEventListener('click', () => {
     incidentModal.classList.remove('active');
+    mapView.clearHighlightEdge();
   });
 
   document.getElementById('tabBtnInjectBlock')?.addEventListener('click', () => {
@@ -372,6 +417,19 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
+    const edgeSet = new Set();
+    if (currentNetwork && currentNetwork.edges) {
+      currentNetwork.edges.forEach(e => {
+        edgeSet.add(`${e.u}_${e.v}`);
+        edgeSet.add(`${e.v}_${e.u}`);
+      });
+    }
+
+    if (!edgeSet.has(`${u}_${v}`) && !edgeSet.has(`${v}_${u}`)) {
+      alert(`Cannot block corridor: No direct road link connects Node ${u} and Node ${v}. Please select a connected highway corridor from the dropdown.`);
+      return;
+    }
+
     const nodeMap = {};
     if (currentNetwork && currentNetwork.nodes) {
       currentNetwork.nodes.forEach(n => { nodeMap[n.id] = n; });
@@ -391,6 +449,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       currentNetwork.incidents = res.incidents || [res.incident];
       mapView.renderIncidents(currentNetwork.incidents, currentNetwork);
+      mapView.clearHighlightEdge();
       updateRoadblockBadges();
       incidentModal.classList.remove('active');
 

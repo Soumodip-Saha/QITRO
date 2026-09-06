@@ -11,6 +11,8 @@ class MapView {
     this.routePolylines = [];
     this.vehicleMarkers = {};
     this.incidentMarkers = {};
+    this.incidentLayers = [];
+    this.highlightLayer = null;
     this.routeColors = ['#06b6d4', '#a855f7', '#10b981', '#f59e0b', '#f43f5e', '#3b82f6'];
 
     this.initMap();
@@ -50,6 +52,31 @@ class MapView {
 
     Object.values(this.incidentMarkers).forEach(i => this.map.removeLayer(i));
     this.incidentMarkers = {};
+
+    this.incidentLayers.forEach(l => this.map.removeLayer(l));
+    this.incidentLayers = [];
+
+    this.clearHighlightEdge();
+  }
+
+  highlightEdge(u, v) {
+    this.clearHighlightEdge();
+    if (u === null || v === null || !this.nodeMarkers[u] || !this.nodeMarkers[v]) return;
+    const uPos = this.nodeMarkers[u].getLatLng();
+    const vPos = this.nodeMarkers[v].getLatLng();
+    this.highlightLayer = L.polyline([uPos, vPos], {
+      color: '#38bdf8',
+      weight: 6.5,
+      opacity: 0.95,
+      dashArray: '6, 6',
+    }).addTo(this.map);
+  }
+
+  clearHighlightEdge() {
+    if (this.highlightLayer) {
+      this.map.removeLayer(this.highlightLayer);
+      this.highlightLayer = null;
+    }
   }
 
   renderRoadNetwork(network) {
@@ -136,25 +163,52 @@ class MapView {
   renderIncidents(incidents, network) {
     Object.values(this.incidentMarkers).forEach(m => this.map.removeLayer(m));
     this.incidentMarkers = {};
+    if (this.incidentLayers) {
+      this.incidentLayers.forEach(l => this.map.removeLayer(l));
+    }
+    this.incidentLayers = [];
 
     if (!incidents || incidents.length === 0 || !network || !network.nodes) return;
 
     const nodeMap = {};
     network.nodes.forEach(n => { nodeMap[n.id] = n; });
 
+    // Validate against actual network edges
+    const edgeSet = new Set();
+    if (network.edges) {
+      network.edges.forEach(e => {
+        edgeSet.add(`${e.u}_${e.v}`);
+        edgeSet.add(`${e.v}_${e.u}`);
+      });
+    }
+
     incidents.forEach(inc => {
+      // If incident is between disconnected nodes, do not render floating in space
+      if (!edgeSet.has(`${inc.edge_u}_${inc.edge_v}`) && !edgeSet.has(`${inc.edge_v}_${inc.edge_u}`)) {
+        return;
+      }
+
       const uNode = nodeMap[inc.edge_u];
       const vNode = nodeMap[inc.edge_v];
       if (uNode && vNode) {
+        // Draw the blocked road corridor in bright glowing red
+        const blockedLine = L.polyline([[uNode.lat, uNode.lon], [vNode.lat, vNode.lon]], {
+          color: '#ef4444',
+          weight: 5.5,
+          opacity: 0.95,
+          dashArray: '6, 6',
+        }).addTo(this.map);
+        this.incidentLayers.push(blockedLine);
+
         const midLat = (uNode.lat + vNode.lat) / 2.0;
         const midLon = (uNode.lon + vNode.lon) / 2.0;
         const incIcon = L.divIcon({
           className: 'incident-pin',
-          html: `<div style="background:#ef4444; width:26px; height:26px; border-radius:6px; border:2px solid #fff; box-shadow:0 0 14px #ef4444; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:bold; color:#fff; cursor:pointer;">&#9888;</div>`,
-          iconSize: [26, 26],
-          iconAnchor: [13, 13],
+          html: `<div style="background:#ef4444; width:28px; height:28px; border-radius:6px; border:2px solid #fff; box-shadow:0 0 16px #ef4444; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:bold; color:#fff; cursor:pointer;">&#9888;</div>`,
+          iconSize: [28, 28],
+          iconAnchor: [14, 14],
         });
-        const incMarker = L.marker([midLat, midLon], { icon: incIcon, zIndexOffset: 1500 }).addTo(this.map);
+        const incMarker = L.marker([midLat, midLon], { icon: incIcon, zIndexOffset: 2000 }).addTo(this.map);
         const uName = uNode.name || `Node ${inc.edge_u}`;
         const vName = vNode.name || `Node ${inc.edge_v}`;
         const incKey = inc.id || inc.incident_id || `${inc.edge_u}_${inc.edge_v}`;

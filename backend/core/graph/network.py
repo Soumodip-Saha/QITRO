@@ -102,6 +102,13 @@ class RoadNetwork:
     def remove_incident(self, incident_id: str):
         if incident_id in self.incidents:
             del self.incidents[incident_id]
+        else:
+            to_del = [
+                k for k, inc in self.incidents.items()
+                if k == incident_id or inc.incident_id == incident_id or f"{inc.edge_u}_{inc.edge_v}" == incident_id or f"{inc.edge_v}_{inc.edge_u}" == incident_id
+            ]
+            for k in to_del:
+                del self.incidents[k]
 
     def get_dynamic_edge_travel_time(self, u: int, v: int, current_time: Optional[float] = None) -> float:
         """

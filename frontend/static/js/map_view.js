@@ -81,10 +81,13 @@ class MapView {
       }).addTo(this.map);
 
       line.bindPopup(`
-        <div style="font-size:0.8rem; color:#111;">
-          <strong>Edge: ${uNode.name || uNode.id} &harr; ${vNode.name || vNode.id}</strong><br>
+        <div style="font-size:0.8rem; color:#111; min-width:180px;">
+          <strong>Corridor: ${uNode.name || uNode.id} &harr; ${vNode.name || vNode.id}</strong><br>
           Distance: ${e.distance_km} km | Speed Limit: ${e.speed_limit_kmh} km/h<br>
-          Capacity: ${e.capacity_vph} vph | Flow Time: ${Math.round(e.dynamic_time_sec || freeFlowSec)}s
+          Flow Time: ${Math.round(e.dynamic_time_sec || freeFlowSec)}s<br>
+          <button onclick="window.openIncidentModalForEdge(${e.u}, ${e.v})" style="margin-top:6px; background:#ef4444; color:#fff; border:none; border-radius:4px; padding:4px 8px; font-size:0.75rem; cursor:pointer; font-weight:600; width:100%; display:block; text-align:center;">
+            &#9888; Block This Road Portion
+          </button>
         </div>
       `);
       this.edgeLayers.push(line);
@@ -154,17 +157,20 @@ class MapView {
         const incMarker = L.marker([midLat, midLon], { icon: incIcon, zIndexOffset: 1500 }).addTo(this.map);
         const uName = uNode.name || `Node ${inc.edge_u}`;
         const vName = vNode.name || `Node ${inc.edge_v}`;
+        const incKey = inc.id || inc.incident_id || `${inc.edge_u}_${inc.edge_v}`;
         incMarker.bindPopup(`
-          <div style="font-size:0.82rem; color:#111; min-width:180px;">
+          <div style="font-size:0.82rem; color:#111; min-width:190px;">
             <strong style="color:#ef4444; font-size:0.9rem;">&#9888; Roadblock Corridor</strong><br>
             <strong>Corridor:</strong> ${uName} &harr; ${vName}<br>
             <strong>Delay Added:</strong> +${Math.round(inc.delay_seconds / 60)} min (+${inc.delay_seconds}s)<br>
             <strong>Severity:</strong> ${(inc.severity * 100).toFixed(0)}%<br>
             <div style="margin-top:4px; font-style:italic; color:#64748b;">${inc.description || 'Active Congestion'}</div>
+            <button onclick="window.removeSingleIncident('${incKey}')" style="margin-top:8px; width:100%; background:#dc2626; color:#fff; border:none; border-radius:4px; padding:4px 8px; font-size:0.75rem; cursor:pointer; font-weight:bold;">
+              &#10005; Clear This Roadblock
+            </button>
           </div>
         `);
-        const key = inc.id || `${inc.edge_u}_${inc.edge_v}`;
-        this.incidentMarkers[key] = incMarker;
+        this.incidentMarkers[incKey] = incMarker;
       }
     });
   }

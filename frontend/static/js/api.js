@@ -53,6 +53,11 @@ const API = {
     return await res.json();
   },
 
+  async clearIncidents() {
+    const res = await fetch('/api/incident/clear', { method: 'POST' });
+    return await res.json();
+  },
+
   async startSimulation() {
     const res = await fetch('/api/simulation/start', { method: 'POST' });
     return await res.json();

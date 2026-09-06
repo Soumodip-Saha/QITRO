@@ -125,40 +125,53 @@ class TrafficSimulator:
 
     def _check_for_incident_reroute(self, agent: VehicleAgent):
         """
-        Detects if current edge or upcoming edge has severe blockage.
-        Triggers Quantum Reroute if detour is beneficial.
+        Detects if current edge or any upcoming edge on the vehicle's remaining planned path
+        has a severe roadblock or incident (severity >= 0.5).
+        Triggers Quantum Rerouting (QPSO) to dynamically bypass the blockage.
         """
-        if len(agent.current_node_path) < 2 or agent.path_progress_idx >= len(agent.current_node_path) - 1:
+        remaining_nodes = agent.current_node_path[agent.path_progress_idx:]
+        if len(remaining_nodes) < 2:
             return
 
-        u = agent.current_node_path[agent.path_progress_idx]
-        v = agent.current_node_path[agent.path_progress_idx + 1]
+        for i in range(len(remaining_nodes) - 1):
+            u = remaining_nodes[i]
+            v = remaining_nodes[i + 1]
 
-        # Check for incident
-        for inc in self.network.incidents.values():
-            if (inc.edge_u == u and inc.edge_v == v) or (inc.edge_u == v and inc.edge_v == u):
-                if inc.is_active(self.sim_time) and inc.severity >= 0.5:
-                    # Severe blockage detected! Trigger Quantum Rerouting
-                    self._trigger_quantum_reroute(agent, incident=inc)
-                    break
+            for inc in self.network.incidents.values():
+                if (inc.edge_u == u and inc.edge_v == v) or (inc.edge_u == v and inc.edge_v == u):
+                    if inc.is_active(self.sim_time) and inc.severity >= 0.5:
+                        inc_key = f"{agent.vehicle_id}_{inc.incident_id}"
+                        if getattr(agent, "_last_handled_incident", None) == inc_key:
+                            continue
+                        agent._last_handled_incident = inc_key
+                        self._trigger_quantum_reroute(agent, incident=inc)
+                        return
 
     def _trigger_quantum_reroute(self, agent: VehicleAgent, incident: TrafficIncident):
         """
         Dynamically optimizes remaining unvisited customer stops using QPSO from vehicle's current node.
+        Avoids the blocked corridor and guides the vehicle safely to remaining destinations and depot.
         """
         curr_node_id = agent.current_node_path[agent.path_progress_idx]
         remaining_customers = [self.problem.customer_map[cid] for cid in agent.assigned_route if cid not in agent.visited_customers]
 
         if not remaining_customers:
-            # Just recalculate shortest path back to depot
+            # Just recalculate dynamic shortest path avoiding incident back to central depot
             new_path, _, _ = self.network.dijkstra_shortest_path(curr_node_id, self.problem.depot_node_id, self.sim_time)
             if new_path:
-                agent.current_node_path = new_path
+                agent.current_node_path = list(new_path)
+                agent.detour_node_path = list(new_path)
                 agent.path_progress_idx = 0
                 agent.sub_leg_progress = 0.0
-                event_msg = f"Vehicle {agent.vehicle_id} avoided blocked link ({incident.edge_u}->{incident.edge_v}) via dynamic detour."
+                event_msg = f"Quantum Detour: Vehicle {agent.vehicle_id} bypassed roadblock ({incident.edge_u}↔{incident.edge_v}) returning to Depot. Delay avoided: {round(incident.delay_seconds/60, 1)} min."
                 agent.reroute_history.append(event_msg)
-                self.reroute_events.append({"time": self.sim_time, "vehicle_id": agent.vehicle_id, "message": event_msg})
+                self.reroute_events.append({
+                    "time": self.sim_time,
+                    "vehicle_id": agent.vehicle_id,
+                    "message": event_msg,
+                    "delay_avoided_sec": round(incident.delay_seconds, 1),
+                    "detour_path": list(new_path),
+                })
             return
 
         # Build subproblem for dynamic rerouting
@@ -196,23 +209,45 @@ class TrafficSimulator:
         )
 
         # Solve with fast QPSO
-        solver = QPSOSolver(sub_problem, swarm_size=20, max_iterations=40)
+        solver = QPSOSolver(sub_problem, swarm_size=25, max_iterations=40)
         sub_sol = solver.solve()
 
         if sub_sol.routes and sub_sol.routes[0].customer_ids:
             reordered_cids = [remaining_customers[sc_id - 1].customer_id for sc_id in sub_sol.routes[0].customer_ids]
             agent.assigned_route = reordered_cids
-            detour_path = sub_sol.routes[0].detailed_node_path
+
+            # Build full detour path from curr_node_id through remaining customers to central depot
+            detour_path: List[int] = []
+            visited_sub_nodes = [curr_node_id] + [remaining_customers[sc_id - 1].node_id for sc_id in sub_sol.routes[0].customer_ids]
+            for idx in range(len(visited_sub_nodes) - 1):
+                seg_u = visited_sub_nodes[idx]
+                seg_v = visited_sub_nodes[idx + 1]
+                seg_path = paths.get((seg_u, seg_v))
+                if seg_path:
+                    if detour_path:
+                        detour_path.extend(seg_path[1:])
+                    else:
+                        detour_path.extend(seg_path)
+
+            # Return leg from last customer to central depot
+            last_stop_node = visited_sub_nodes[-1]
+            return_path, _, _ = self.network.dijkstra_shortest_path(last_stop_node, self.problem.depot_node_id, self.sim_time)
+            if return_path:
+                if detour_path:
+                    detour_path.extend(return_path[1:])
+                else:
+                    detour_path.extend(return_path)
+
             agent.detour_node_path = list(detour_path)
-            agent.current_node_path = detour_path
+            agent.current_node_path = list(detour_path)
             agent.path_progress_idx = 0
             agent.sub_leg_progress = 0.0
 
-            # Quantified delay avoided: incident delay vs detour cost
-            delay_saved = max(180.0, incident.delay_seconds - sub_sol.total_travel_time_sec * 0.1)
+            # Delay avoided: incident delay vs detour cost
+            delay_saved = max(180.0, incident.delay_seconds - sub_sol.total_travel_time_sec * 0.05)
             agent.total_delay_avoided_sec += delay_saved
 
-            event_msg = f"Quantum Reroute (QPSO): Vehicle {agent.vehicle_id} bypassed incident on ({incident.edge_u}<->{incident.edge_v}). Avoided {round(delay_saved/60, 1)} min delay. Detour stops: {reordered_cids}"
+            event_msg = f"Quantum Reroute (QPSO): Vehicle {agent.vehicle_id} bypassed roadblock ({incident.edge_u}↔{incident.edge_v}). Avoided {round(delay_saved/60, 1)} min delay. Updated sequence: {reordered_cids}"
             agent.reroute_history.append(event_msg)
             self.reroute_events.append({
                 "time": self.sim_time,

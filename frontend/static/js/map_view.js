@@ -127,29 +127,46 @@ class MapView {
     });
 
     // 3. Draw Incidents
-    if (network.incidents) {
-      network.incidents.forEach(inc => {
-        const uNode = nodeMap[inc.edge_u];
-        const vNode = nodeMap[inc.edge_v];
-        if (uNode && vNode) {
-          const midLat = (uNode.lat + vNode.lat) / 2.0;
-          const midLon = (uNode.lon + vNode.lon) / 2.0;
-          const incIcon = L.divIcon({
-            className: 'incident-pin',
-            html: `<div style="background:#ef4444; width:22px; height:22px; border-radius:4px; border:2px solid #fff; box-shadow:0 0 12px #ef4444; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:bold; color:#fff;">&#9888;</div>`,
-            iconSize: [22, 22],
-            iconAnchor: [11, 11],
-          });
-          const incMarker = L.marker([midLat, midLon], { icon: incIcon }).addTo(this.map);
-          incMarker.bindPopup(`
-            <strong style="color:red;">Incident Blockage</strong><br>
-            ${inc.description}<br>
-            Severity: ${(inc.severity * 100).toFixed(0)}% | Delay: +${inc.delay_seconds}s
-          `);
-          this.incidentMarkers[inc.id] = incMarker;
-        }
-      });
-    }
+    this.renderIncidents(network.incidents, network);
+  }
+
+  renderIncidents(incidents, network) {
+    Object.values(this.incidentMarkers).forEach(m => this.map.removeLayer(m));
+    this.incidentMarkers = {};
+
+    if (!incidents || incidents.length === 0 || !network || !network.nodes) return;
+
+    const nodeMap = {};
+    network.nodes.forEach(n => { nodeMap[n.id] = n; });
+
+    incidents.forEach(inc => {
+      const uNode = nodeMap[inc.edge_u];
+      const vNode = nodeMap[inc.edge_v];
+      if (uNode && vNode) {
+        const midLat = (uNode.lat + vNode.lat) / 2.0;
+        const midLon = (uNode.lon + vNode.lon) / 2.0;
+        const incIcon = L.divIcon({
+          className: 'incident-pin',
+          html: `<div style="background:#ef4444; width:26px; height:26px; border-radius:6px; border:2px solid #fff; box-shadow:0 0 14px #ef4444; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:bold; color:#fff; cursor:pointer;">&#9888;</div>`,
+          iconSize: [26, 26],
+          iconAnchor: [13, 13],
+        });
+        const incMarker = L.marker([midLat, midLon], { icon: incIcon, zIndexOffset: 1500 }).addTo(this.map);
+        const uName = uNode.name || `Node ${inc.edge_u}`;
+        const vName = vNode.name || `Node ${inc.edge_v}`;
+        incMarker.bindPopup(`
+          <div style="font-size:0.82rem; color:#111; min-width:180px;">
+            <strong style="color:#ef4444; font-size:0.9rem;">&#9888; Roadblock Corridor</strong><br>
+            <strong>Corridor:</strong> ${uName} &harr; ${vName}<br>
+            <strong>Delay Added:</strong> +${Math.round(inc.delay_seconds / 60)} min (+${inc.delay_seconds}s)<br>
+            <strong>Severity:</strong> ${(inc.severity * 100).toFixed(0)}%<br>
+            <div style="margin-top:4px; font-style:italic; color:#64748b;">${inc.description || 'Active Congestion'}</div>
+          </div>
+        `);
+        const key = inc.id || `${inc.edge_u}_${inc.edge_v}`;
+        this.incidentMarkers[key] = incMarker;
+      }
+    });
   }
 
   renderRoutes(routes, network) {

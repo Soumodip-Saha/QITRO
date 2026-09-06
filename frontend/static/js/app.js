@@ -118,32 +118,116 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
+  // Helper to log event messages to the Dynamic Stream
+  function appendEventLog(msg, color = '#06b6d4') {
+    const logBox = document.getElementById('eventLogs');
+    if (!logBox) return;
+    if (logBox.innerHTML.includes('No dynamic incidents active')) {
+      logBox.innerHTML = '';
+    }
+    const timeStr = new Date().toLocaleTimeString();
+    const entry = document.createElement('div');
+    entry.style.cssText = `font-size:0.75rem; color:${color}; margin-bottom:4px; font-family:monospace; line-height:1.3;`;
+    entry.innerHTML = `<span style="color:#94a3b8; font-size:0.7rem;">[${timeStr}]</span> ${msg}`;
+    logBox.prepend(entry);
+  }
+
   // 4. Incident Injection Handler
   document.getElementById('btnAddIncident').addEventListener('click', async () => {
-    const u = parseInt(prompt('Enter start intersection Node ID for roadblock (e.g. 6):', '6'));
-    const v = parseInt(prompt('Enter end intersection Node ID (e.g. 2):', '2'));
+    if (!currentNetwork || !currentNetwork.nodes || currentNetwork.nodes.length < 2) {
+      alert('Please select or wait for a city network to load first.');
+      return;
+    }
 
-    if (isNaN(u) || isNaN(v)) return;
+    // Auto-select target edge:
+    // 1. If an optimized route exists, pick an edge on Vehicle 1's planned path (or another vehicle's)
+    let targetU = null;
+    let targetV = null;
+
+    if (currentSolution && currentSolution.routes && currentSolution.routes.length > 0) {
+      for (const route of currentSolution.routes) {
+        if (route.detailed_node_path && route.detailed_node_path.length >= 2) {
+          const path = route.detailed_node_path;
+          for (let i = 0; i < path.length - 1; i++) {
+            const u = path[i];
+            const v = path[i + 1];
+            const alreadyHasInc = currentNetwork.incidents && currentNetwork.incidents.some(
+              inc => (inc.edge_u === u && inc.edge_v === v) || (inc.edge_u === v && inc.edge_v === u)
+            );
+            if (!alreadyHasInc) {
+              targetU = u;
+              targetV = v;
+              break;
+            }
+          }
+          if (targetU !== null) break;
+        }
+      }
+    }
+
+    // Fallback: pick an edge from network
+    if (targetU === null && currentNetwork.edges && currentNetwork.edges.length > 0) {
+      for (const edge of currentNetwork.edges) {
+        const alreadyHasInc = currentNetwork.incidents && currentNetwork.incidents.some(
+          inc => (inc.edge_u === edge.u && inc.edge_v === edge.v) || (inc.edge_u === edge.v && inc.edge_v === edge.u)
+        );
+        if (!alreadyHasInc) {
+          targetU = edge.u;
+          targetV = edge.v;
+          break;
+        }
+      }
+    }
+
+    if (targetU === null) {
+      targetU = currentNetwork.nodes[0].id;
+      targetV = currentNetwork.nodes[1].id;
+    }
+
+    const nodeMap = {};
+    currentNetwork.nodes.forEach(n => { nodeMap[n.id] = n; });
+    const uName = nodeMap[targetU]?.name || `Node ${targetU}`;
+    const vName = nodeMap[targetV]?.name || `Node ${targetV}`;
 
     try {
       const res = await API.addIncident({
-        edge_u: u,
-        edge_v: v,
-        severity: 0.9,
+        edge_u: targetU,
+        edge_v: targetV,
+        severity: 0.95,
         delay_seconds: 900.0,
         duration_seconds: 3600.0,
-        description: `Severe Congestion & Roadblock between [${u}] and [${v}]`,
+        description: `Severe Congestion & Roadblock: ${uName} ↔ ${vName}`,
       });
 
-      alert(`Active Incident Injected: ${res.incident.description}`);
-      // Refresh network
-      const cityId = document.getElementById('citySelect').value;
-      await loadCity(cityId);
-      if (currentSolution) {
-        mapView.renderRoutes(currentSolution.routes, currentNetwork);
+      // Update current network's incidents directly
+      currentNetwork.incidents = res.incidents || [res.incident];
+      mapView.renderIncidents(currentNetwork.incidents, currentNetwork);
+
+      // Immediately log to event stream
+      appendEventLog(`⚠️ <strong style="color:#ef4444;">ROADBLOCK INJECTED</strong>: Congestion on <strong>${uName}</strong> &harr; <strong>${vName}</strong> (+15 min delay).`, '#ef4444');
+      appendEventLog(`⚡ <strong style="color:#06b6d4;">QUANTUM OBSERVER</strong>: Real-time rerouting engaged. Monitoring fleet trajectory...`, '#06b6d4');
+
+      if (res.reroute_events && res.reroute_events.length > 0) {
+        res.reroute_events.forEach(evt => {
+          appendEventLog(`⚡ [Vehicle ${evt.vehicle_id}] ${evt.message}`, '#10b981');
+        });
       }
     } catch (e) {
       alert(`Failed to add incident: ${e.message}`);
+    }
+  });
+
+  // Clear Incidents Handler
+  document.getElementById('btnClearIncidents').addEventListener('click', async () => {
+    try {
+      await API.clearIncidents();
+      if (currentNetwork) {
+        currentNetwork.incidents = [];
+        mapView.renderIncidents([], currentNetwork);
+      }
+      appendEventLog(`✅ All dynamic roadblocks cleared. Traffic restored to free-flow velocity.`, '#10b981');
+    } catch (e) {
+      console.error('Failed to clear incidents:', e);
     }
   });
 
@@ -175,11 +259,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('simClock').innerText = state.sim_time_formatted;
 
         // Render Reroute Event log
-        const logBox = document.getElementById('eventLogs');
-        if (logBox && state.reroute_events && state.reroute_events.length > 0) {
-          logBox.innerHTML = state.reroute_events
-            .map(e => `<div style="font-size:0.75rem; color:#06b6d4; margin-bottom:4px;">[${e.vehicle_id ? 'Vehicle ' + e.vehicle_id : 'System'}] ${e.message}</div>`)
-            .join('');
+        if (state.reroute_events && state.reroute_events.length > 0) {
+          const logBox = document.getElementById('eventLogs');
+          if (logBox) {
+            logBox.innerHTML = state.reroute_events
+              .map(e => `<div style="font-size:0.75rem; color:#10b981; margin-bottom:4px; font-family:monospace; line-height:1.3;">[⚡ Vehicle ${e.vehicle_id || 'Fleet'}] ${e.message}</div>`)
+              .join('');
+          }
         }
 
         if (state.all_completed) {

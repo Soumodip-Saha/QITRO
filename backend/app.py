@@ -330,7 +330,7 @@ async def run_benchmark(req: BenchmarkRequest):
 
 @app.post("/api/incident")
 async def add_incident(req: IncidentRequest):
-    global CURRENT_NETWORK
+    global CURRENT_NETWORK, CURRENT_SIMULATOR
     incident_id = f"inc_{req.edge_u}_{req.edge_v}_{int(CURRENT_NETWORK.sim_time)}"
     inc = TrafficIncident(
         incident_id=incident_id,
@@ -343,14 +343,67 @@ async def add_incident(req: IncidentRequest):
         description=req.description,
     )
     CURRENT_NETWORK.add_incident(inc)
-    return {"message": "Incident added successfully", "incident": inc.__dict__}
+
+    reroute_events = []
+    if CURRENT_SIMULATOR is not None:
+        if CURRENT_SIMULATOR.network is not CURRENT_NETWORK:
+            CURRENT_SIMULATOR.network.add_incident(inc)
+        # Check active agents immediately for instant rerouting
+        for agent in CURRENT_SIMULATOR.agents.values():
+            if agent.status not in ("COMPLETED", "FAILED"):
+                CURRENT_SIMULATOR._check_for_incident_reroute(agent)
+        reroute_events = CURRENT_SIMULATOR.reroute_events[-10:]
+
+    all_incidents = [
+        {
+            "id": i.incident_id,
+            "edge_u": i.edge_u,
+            "edge_v": i.edge_v,
+            "severity": i.severity,
+            "delay_seconds": i.delay_seconds,
+            "start_time": i.start_time,
+            "duration_seconds": i.duration_seconds,
+            "description": i.description,
+        }
+        for i in CURRENT_NETWORK.incidents.values()
+    ]
+    return {
+        "message": "Incident added successfully",
+        "incident": inc.__dict__,
+        "incidents": all_incidents,
+        "reroute_events": reroute_events,
+    }
 
 
 @app.delete("/api/incident/{incident_id}")
 async def remove_incident(incident_id: str):
-    global CURRENT_NETWORK
+    global CURRENT_NETWORK, CURRENT_SIMULATOR
     CURRENT_NETWORK.remove_incident(incident_id)
-    return {"message": f"Incident {incident_id} removed"}
+    if CURRENT_SIMULATOR is not None and CURRENT_SIMULATOR.network is not CURRENT_NETWORK:
+        CURRENT_SIMULATOR.network.remove_incident(incident_id)
+    all_incidents = [
+        {
+            "id": i.incident_id,
+            "edge_u": i.edge_u,
+            "edge_v": i.edge_v,
+            "severity": i.severity,
+            "delay_seconds": i.delay_seconds,
+            "start_time": i.start_time,
+            "duration_seconds": i.duration_seconds,
+            "description": i.description,
+        }
+        for i in CURRENT_NETWORK.incidents.values()
+    ]
+    return {"message": f"Incident {incident_id} removed", "incidents": all_incidents}
+
+
+@app.post("/api/incident/clear")
+async def clear_incidents():
+    global CURRENT_NETWORK, CURRENT_SIMULATOR
+    CURRENT_NETWORK.incidents.clear()
+    if CURRENT_SIMULATOR is not None:
+        CURRENT_SIMULATOR.network.incidents.clear()
+    return {"message": "All incidents cleared", "incidents": []}
 
 
 @app.post("/api/simulation/start")

@@ -62,6 +62,11 @@ from backend.core.benchmarking.advanced_analytics import (
     QuantumTheoryMetadata,
 )
 from backend.core.simulation.traffic_simulator import TrafficSimulator
+from backend.core.routing.osrm_client import (
+    fetch_osrm_distance_matrix,
+    fetch_osrm_route_geometry,
+    batch_fetch_route_geometries,
+)
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -109,6 +114,15 @@ def build_vrp_problem_from_network(
 
     node_ids = [depot_id] + [n.node_id for n in customer_nodes]
     time_mat, dist_mat, paths = network.compute_all_pairs_matrices(node_ids, network.sim_time)
+
+    # Step 1: Pre-compute distance & travel time matrices via OSRM Table API before optimization
+    depot_node = network.nodes.get(depot_id)
+    if depot_node and len(customer_nodes) > 0:
+        coords = [(depot_node.lat, depot_node.lon)] + [(n.lat, n.lon) for n in customer_nodes]
+        osrm_time_mat, osrm_dist_mat = fetch_osrm_distance_matrix(coords)
+        if osrm_time_mat and osrm_dist_mat:
+            time_mat = osrm_time_mat
+            dist_mat = osrm_dist_mat
 
     customers = []
     for idx, n in enumerate(customer_nodes):
@@ -195,7 +209,7 @@ class IncidentRequest(BaseModel):
     edge_v: int
     severity: float = 0.8  # 0.0 to 1.0
     delay_seconds: float = 600.0  # 10 min
-    duration_seconds: float = 3600.0
+    duration_seconds: float = 604800.0  # 7 days (persists throughout operational shift until cleared)
     description: str = "Road maintenance blockage"
 
 
@@ -265,6 +279,12 @@ async def get_city_graph(city_id: str):
 async def optimize_route(req: OptimizeRequest):
     global CURRENT_NETWORK, CURRENT_PROBLEM, CURRENT_SOLUTION, CURRENT_SIMULATOR
 
+    # Ensure CURRENT_NETWORK matches req.city_id if specified
+    if req.city_id in NETWORK_FACTORIES:
+        net_name_lower = CURRENT_NETWORK.name.lower()
+        if req.city_id not in net_name_lower and req.city_id.replace("_", " ") not in net_name_lower:
+            CURRENT_NETWORK = NETWORK_FACTORIES[req.city_id]()
+
     # Set weather
     try:
         CURRENT_NETWORK.weather = WeatherCondition(req.weather)
@@ -298,6 +318,12 @@ async def optimize_route(req: OptimizeRequest):
     solution = runner.run_single(req.algorithm, params=params)
     CURRENT_SOLUTION = solution
 
+    # Step 3: Fetch real-world road GeoJSON geometry for each converged route
+    depot_node = CURRENT_NETWORK.nodes.get(CURRENT_PROBLEM.depot_node_id)
+    depot_coord = (depot_node.lat, depot_node.lon) if depot_node else (12.9716, 77.5946)
+    cust_coord_map = {c.customer_id: (c.lat, c.lon) for c in CURRENT_PROBLEM.customers}
+    batch_fetch_route_geometries(solution.routes, depot_coord, cust_coord_map)
+
     # Initialize simulator for this solution
     CURRENT_SIMULATOR = TrafficSimulator(CURRENT_NETWORK, CURRENT_PROBLEM, CURRENT_SOLUTION)
 
@@ -324,35 +350,146 @@ async def run_benchmark(req: BenchmarkRequest):
         num_runs=req.num_runs,
         iterations_override=req.iterations,
     )
+
+    # Fetch real-world road geometry for the best benchmark routes
+    if "best_solutions" in report:
+        depot_node = CURRENT_NETWORK.nodes.get(CURRENT_PROBLEM.depot_node_id)
+        depot_coord = (depot_node.lat, depot_node.lon) if depot_node else (12.9716, 77.5946)
+        cust_coord_map = {c.customer_id: (c.lat, c.lon) for c in CURRENT_PROBLEM.customers}
+        for algo_key, sol_dict in report["best_solutions"].items():
+            if "routes" in sol_dict:
+                batch_fetch_route_geometries(sol_dict["routes"], depot_coord, cust_coord_map)
+
     LAST_BENCHMARK_REPORT = report
     return report
 
 
+def update_routes_for_traffic_state() -> List[Dict[str, Any]]:
+    """
+    Dynamically recalculates detailed paths, travel times, distances, and real-world
+    road GeoJSON geometries for all active fleet routes in CURRENT_SOLUTION to bypass roadblocks.
+    """
+    global CURRENT_NETWORK, CURRENT_PROBLEM, CURRENT_SOLUTION, CURRENT_SIMULATOR
+    if CURRENT_SOLUTION is None or CURRENT_PROBLEM is None:
+        return []
+
+    for route in CURRENT_SOLUTION.routes:
+        if not route.customer_ids:
+            continue
+
+        visited_nodes = [CURRENT_PROBLEM.depot_node_id]
+        for cid in route.customer_ids:
+            if cid in CURRENT_PROBLEM.customer_map:
+                visited_nodes.append(CURRENT_PROBLEM.customer_map[cid].node_id)
+        visited_nodes.append(CURRENT_PROBLEM.depot_node_id)
+
+        detoured_path: List[int] = []
+        total_time = 0.0
+        total_dist = 0.0
+
+        for i in range(len(visited_nodes) - 1):
+            u_nid = visited_nodes[i]
+            v_nid = visited_nodes[i + 1]
+            seg_path, seg_time, seg_dist = CURRENT_NETWORK.dijkstra_shortest_path(
+                u_nid, v_nid, CURRENT_NETWORK.sim_time
+            )
+            total_time += seg_time
+            total_dist += seg_dist
+            if seg_path:
+                if len(detoured_path) > 0 and seg_path[0] == detoured_path[-1]:
+                    detoured_path.extend(seg_path[1:])
+                else:
+                    detoured_path.extend(seg_path)
+
+        route.detailed_node_path = detoured_path
+        route.total_travel_time_sec = round(total_time, 1)
+        route.total_distance_km = round(total_dist, 2)
+
+        # Build sequence of waypoint coordinates along the detoured path
+        detour_coords = []
+        for nid in detoured_path:
+            node_obj = CURRENT_NETWORK.nodes.get(nid)
+            if node_obj:
+                detour_coords.append((node_obj.lat, node_obj.lon))
+
+        if len(detour_coords) >= 2:
+            try:
+                # If path has many waypoints, sample key corridor waypoints to keep OSRM response fast and avoid timeouts
+                sample_coords = (
+                    detour_coords
+                    if len(detour_coords) <= 10
+                    else [detour_coords[0]] + detour_coords[1:-1:max(1, len(detour_coords) // 8)] + [detour_coords[-1]]
+                )
+                route.geojson_geometry = fetch_osrm_route_geometry(sample_coords, timeout=2.5)
+            except Exception:
+                route.geojson_geometry = [[lat, lon] for lat, lon in detour_coords]
+
+    CURRENT_SOLUTION.total_distance_km = round(sum(r.total_distance_km for r in CURRENT_SOLUTION.routes), 2)
+    CURRENT_SOLUTION.total_travel_time_sec = round(sum(r.total_travel_time_sec for r in CURRENT_SOLUTION.routes), 1)
+
+    # Sync simulator agents if active
+    if CURRENT_SIMULATOR is not None:
+        for route in CURRENT_SOLUTION.routes:
+            agent = CURRENT_SIMULATOR.agents.get(route.vehicle_id)
+            if agent and agent.status not in ("COMPLETED", "FAILED"):
+                agent.current_node_path = list(route.detailed_node_path)
+                agent.detour_node_path = list(route.detailed_node_path)
+
+    sol_dict = CURRENT_SOLUTION.to_dict()
+    return sol_dict.get("routes", [])
+
+
 @app.post("/api/incident")
 async def add_incident(req: IncidentRequest):
-    global CURRENT_NETWORK, CURRENT_SIMULATOR
+    global CURRENT_NETWORK, CURRENT_SIMULATOR, CURRENT_SOLUTION, CURRENT_PROBLEM
 
-    # Validate that edge (u, v) or (v, u) exists in the network
-    edge_forward = (req.edge_u, req.edge_v) in CURRENT_NETWORK.edges
-    edge_reverse = (req.edge_v, req.edge_u) in CURRENT_NETWORK.edges
+    target_u = req.edge_u
+    target_v = req.edge_v
+
+    edge_forward = (target_u, target_v) in CURRENT_NETWORK.edges
+    edge_reverse = (target_v, target_u) in CURRENT_NETWORK.edges
+
     if not edge_forward and not edge_reverse:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Corridor between Node {req.edge_u} and Node {req.edge_v} does not exist in the road network. Please choose a connected road segment."
-        )
+        # Resolve connecting corridor path via Dijkstra
+        path, _, _ = CURRENT_NETWORK.dijkstra_shortest_path(target_u, target_v, CURRENT_NETWORK.sim_time)
+        if path and len(path) >= 2:
+            target_u = path[0]
+            target_v = path[1]
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Corridor between Node {req.edge_u} and Node {req.edge_v} does not exist or is disconnected in the road network."
+            )
 
-    incident_id = f"inc_{req.edge_u}_{req.edge_v}_{int(CURRENT_NETWORK.sim_time)}"
+    incident_id = f"inc_{target_u}_{target_v}_{int(CURRENT_NETWORK.sim_time)}"
+
+    # Fetch high-precision real road geometry for the blocked highway corridor
+    u_node = CURRENT_NETWORK.nodes.get(target_u)
+    v_node = CURRENT_NETWORK.nodes.get(target_v)
+    inc_geo = None
+    if u_node and v_node:
+        try:
+            inc_geo = fetch_osrm_route_geometry([(u_node.lat, u_node.lon), (v_node.lat, v_node.lon)], timeout=3.5)
+        except Exception:
+            inc_geo = [[u_node.lat, u_node.lon], [v_node.lat, v_node.lon]]
+
+    duration = req.duration_seconds if req.duration_seconds > 3600.0 else 604800.0
+
     inc = TrafficIncident(
         incident_id=incident_id,
-        edge_u=req.edge_u,
-        edge_v=req.edge_v,
+        edge_u=target_u,
+        edge_v=target_v,
         severity=req.severity,
         delay_seconds=req.delay_seconds,
         start_time=CURRENT_NETWORK.sim_time,
-        duration_seconds=req.duration_seconds,
+        duration_seconds=duration,
         description=req.description,
+        geojson_geometry=inc_geo,
     )
     CURRENT_NETWORK.add_incident(inc)
+
+    # Dynamic Quantum Detour: update routes to bypass blockage immediately
+    updated_routes = update_routes_for_traffic_state()
 
     reroute_events = []
     if CURRENT_SIMULATOR is not None:
@@ -374,23 +511,29 @@ async def add_incident(req: IncidentRequest):
             "start_time": i.start_time,
             "duration_seconds": i.duration_seconds,
             "description": i.description,
+            "geojson_geometry": getattr(i, "geojson_geometry", None),
         }
         for i in CURRENT_NETWORK.incidents.values()
     ]
     return {
-        "message": "Incident added successfully",
+        "message": "Roadblock injected and quantum detour routes computed successfully",
         "incident": inc.__dict__,
         "incidents": all_incidents,
         "reroute_events": reroute_events,
+        "routes": updated_routes,
+        "solution": CURRENT_SOLUTION.to_dict() if CURRENT_SOLUTION else None,
     }
 
 
 @app.delete("/api/incident/{incident_id}")
 async def remove_incident(incident_id: str):
-    global CURRENT_NETWORK, CURRENT_SIMULATOR
+    global CURRENT_NETWORK, CURRENT_SIMULATOR, CURRENT_SOLUTION
     CURRENT_NETWORK.remove_incident(incident_id)
     if CURRENT_SIMULATOR is not None and CURRENT_SIMULATOR.network is not CURRENT_NETWORK:
         CURRENT_SIMULATOR.network.remove_incident(incident_id)
+
+    updated_routes = update_routes_for_traffic_state()
+
     all_incidents = [
         {
             "id": i.incident_id,
@@ -401,19 +544,33 @@ async def remove_incident(incident_id: str):
             "start_time": i.start_time,
             "duration_seconds": i.duration_seconds,
             "description": i.description,
+            "geojson_geometry": getattr(i, "geojson_geometry", None),
         }
         for i in CURRENT_NETWORK.incidents.values()
     ]
-    return {"message": f"Incident {incident_id} removed", "incidents": all_incidents}
+    return {
+        "message": f"Incident {incident_id} removed",
+        "incidents": all_incidents,
+        "routes": updated_routes,
+        "solution": CURRENT_SOLUTION.to_dict() if CURRENT_SOLUTION else None,
+    }
 
 
 @app.post("/api/incident/clear")
 async def clear_incidents():
-    global CURRENT_NETWORK, CURRENT_SIMULATOR
+    global CURRENT_NETWORK, CURRENT_SIMULATOR, CURRENT_SOLUTION
     CURRENT_NETWORK.incidents.clear()
     if CURRENT_SIMULATOR is not None:
         CURRENT_SIMULATOR.network.incidents.clear()
-    return {"message": "All incidents cleared", "incidents": []}
+
+    updated_routes = update_routes_for_traffic_state()
+
+    return {
+        "message": "All incidents cleared",
+        "incidents": [],
+        "routes": updated_routes,
+        "solution": CURRENT_SOLUTION.to_dict() if CURRENT_SOLUTION else None,
+    }
 
 
 @app.post("/api/simulation/start")
@@ -572,3 +729,9 @@ async def websocket_live_stream(websocket: WebSocket):
         pass
     except Exception as e:
         await websocket.close()
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("backend.app:app", host="127.0.0.1", port=8000, reload=True)
+

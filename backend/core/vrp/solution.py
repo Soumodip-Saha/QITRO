@@ -38,6 +38,7 @@ class Route:
     fuel_liters: float = 0.0
     stops: List[StopInfo] = field(default_factory=list)
     detailed_node_path: List[int] = field(default_factory=list)
+    geojson_geometry: Optional[List[List[float]]] = None
 
     @property
     def is_feasible(self) -> bool:
@@ -90,6 +91,7 @@ class VRPSolution:
                     "co2_kg": round(r.co2_grams / 1000.0, 3),
                     "fuel_liters": round(r.fuel_liters, 2),
                     "detailed_node_path": r.detailed_node_path,
+                    "geojson_geometry": r.geojson_geometry,
                     "stops": [
                         {
                             "customer_id": s.customer_id,
@@ -154,7 +156,8 @@ class VRPEvaluator:
                 customer = self.problem.customer_map[cust_id]
                 next_matrix_idx = cust_id
 
-                # Travel from curr to next
+                # O(1) travel time & distance lookup from pre-computed OSRM/road matrix
+                # (Replaces Euclidean/straight-line geometry with actual driving metrics)
                 travel_time = self.problem.time_matrix[curr_matrix_idx][next_matrix_idx]
                 leg_dist = self.problem.dist_matrix[curr_matrix_idx][next_matrix_idx]
 

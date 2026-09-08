@@ -124,7 +124,12 @@ class RoadNetwork:
         incident_delay = 0.0
         for inc in self.incidents.values():
             if (inc.edge_u == u and inc.edge_v == v) or (inc.edge_u == v and inc.edge_v == u):
-                incident_delay += inc.current_delay(t)
+                base_delay = inc.current_delay(t)
+                if inc.severity >= 0.85:
+                    # Impassable / Full Roadblock: forces dynamic rerouting around blockage
+                    incident_delay += max(base_delay * 50.0, 150000.0)
+                else:
+                    incident_delay += base_delay * (1.0 + inc.severity * 6.0)
 
         # Rush hour surge multiplier
         surge = RushHourProfile.get_surge_multiplier(t)
@@ -262,6 +267,7 @@ class RoadNetwork:
                     "start_time": inc.start_time,
                     "duration_seconds": inc.duration_seconds,
                     "description": inc.description,
+                    "geojson_geometry": getattr(inc, "geojson_geometry", None),
                 }
                 for inc in self.incidents.values()
             ],

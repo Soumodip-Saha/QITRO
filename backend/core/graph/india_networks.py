@@ -57,7 +57,7 @@ def create_india_national_network() -> RoadNetwork:
         (31, "Ranchi (Jharkhand Mineral Core)", 23.3441, 85.3096, False, 24.0, 0, 604800),
         (32, "Jamshedpur (Tata Heavy Industry Hub)", 22.8046, 86.2029, False, 26.0, 0, 604800),
         (33, "Mangaluru (New Mangalore Port SEZ)", 12.9141, 74.8560, False, 22.0, 0, 604800),
-        (34, "Vadodara (Gujarat Petrochemical Hub)", 22.3072, 73.1812, False, 24.0, 0, 604800),
+        (34, "Siliguri (Chicken's Neck & Northeast Gateway)", 26.7271, 88.3953, False, 24.0, 0, 604800),
         (35, "Shillong (Meghalaya Hill Terminal)", 25.5788, 91.8933, False, 15.0, 0, 604800),
     ]
 
@@ -81,8 +81,7 @@ def create_india_national_network() -> RoadNetwork:
         # Golden Quadrilateral & NH48 (Delhi - Jaipur - Ahmedabad - Mumbai - Pune - Bangalore - Chennai)
         (1, 9, "NH48 (Delhi-Jaipur Expressway)", 90, 3200, 2200),
         (9, 7, "NH48 (Jaipur-Ahmedabad Corridor)", 85, 2800, 1800),
-        (7, 34, "NE1 (Ahmedabad-Vadodara Expressway)", 100, 3500, 2400),
-        (34, 14, "NH48 (Vadodara-Surat Highway)", 90, 3200, 2300),
+        (7, 14, "NH48 (Ahmedabad-Surat Golden Quadrilateral Corridor)", 95, 3500, 2400),
         (14, 2, "NH48 (Surat-Mumbai Western Corridor)", 85, 3600, 2700),
         (2, 8, "Mumbai-Pune Expressway", 100, 3800, 2900),
         (8, 3, "NH48 (Pune-Bengaluru Highway via Kolhapur/Belagavi)", 85, 2900, 1900),
@@ -132,8 +131,9 @@ def create_india_national_network() -> RoadNetwork:
         (17, 31, "NH22 (Patna-Ranchi)", 75, 2000, 1300),
         (31, 32, "NH18 (Ranchi-Jamshedpur)", 80, 2200, 1500),
         (32, 5, "NH16/NH18 (Jamshedpur-Kolkata)", 85, 2600, 1800),
-        (17, 19, "NH27 (Patna-Siliguri-Guwahati East-West Corridor)", 80, 2400, 1600),
-        (5, 19, "Kolkata-Siliguri-Guwahati Highway", 80, 2500, 1700),
+        (5, 34, "NH12 (Kolkata-Siliguri North Bengal Corridor)", 80, 2600, 1700),
+        (17, 34, "NH27 (Patna-Purnia-Siliguri East-West Corridor)", 85, 2600, 1600),
+        (34, 19, "NH27 (Siliguri-Alipurduar-Guwahati Chicken's Neck Corridor)", 85, 2700, 1700),
         (19, 35, "Guwahati-Shillong Expressway (NH6)", 70, 1800, 1200),
 
         # Coastal Highway (NH66) & Deccan Links

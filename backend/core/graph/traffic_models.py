@@ -26,6 +26,7 @@ class TrafficIncident:
     start_time: float
     duration_seconds: float
     description: str = "Traffic incident"
+    geojson_geometry: Optional[List[List[float]]] = None
 
     def is_active(self, current_time: float) -> bool:
         return self.start_time <= current_time <= (self.start_time + self.duration_seconds)

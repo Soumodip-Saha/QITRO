@@ -190,13 +190,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     }).join('');
   }
 
-  // Populate Corridor Dropdown in Incident Modal with readable corridor names
+  // Populate Corridor & City Dropdowns in Incident Modal
   function populateCorridorDropdown(selectedU = null, selectedV = null) {
     const select = document.getElementById('incidentCorridorSelect');
-    if (!select || !currentNetwork || !currentNetwork.nodes) return;
+    const cityFromSelect = document.getElementById('incidentCityFrom');
+    const cityToSelect = document.getElementById('incidentCityTo');
+    if (!currentNetwork || !currentNetwork.nodes) return;
 
     const nodeMap = {};
     currentNetwork.nodes.forEach(n => { nodeMap[n.id] = n; });
+
+    // Populate City From and City To dropdowns with readable city names
+    if (cityFromSelect && cityToSelect) {
+      const cityOptions = currentNetwork.nodes.map(n => {
+        const prefix = n.is_depot ? '★ [HUB] ' : `[Node ${n.id}] `;
+        return `<option value="${n.id}">${prefix}${n.name || `Node ${n.id}`}</option>`;
+      }).join('');
+      cityFromSelect.innerHTML = cityOptions;
+      cityToSelect.innerHTML = cityOptions;
+    }
 
     const edgeSet = new Set();
     if (currentNetwork.edges) {
@@ -253,25 +265,42 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     }
 
-    select.innerHTML = optionsHtml;
+    if (select) select.innerHTML = optionsHtml;
 
     // Pre-select chosen option or first option
     if (selectedU !== null && selectedV !== null) {
       setCorridorInputFields(selectedU, selectedV);
-    } else if (select.value) {
+    } else if (select && select.value) {
       const parts = select.value.split('_');
       setCorridorInputFields(parseInt(parts[0]), parseInt(parts[1]));
+    } else if (currentNetwork.edges && currentNetwork.edges.length > 0) {
+      setCorridorInputFields(currentNetwork.edges[0].u, currentNetwork.edges[0].v);
     }
   }
 
   function setCorridorInputFields(u, v) {
     const inputU = document.getElementById('incidentNodeU');
     const inputV = document.getElementById('incidentNodeV');
+    const cityFromSelect = document.getElementById('incidentCityFrom');
+    const cityToSelect = document.getElementById('incidentCityTo');
+    const corridorSelect = document.getElementById('incidentCorridorSelect');
     const preview = document.getElementById('corridorPreviewText');
     const submitBtn = document.getElementById('btnConfirmInjectIncident');
 
     if (inputU) inputU.value = u;
     if (inputV) inputV.value = v;
+    if (cityFromSelect) cityFromSelect.value = u;
+    if (cityToSelect) cityToSelect.value = v;
+
+    if (corridorSelect) {
+      const optVal1 = `${u}_${v}`;
+      const optVal2 = `${v}_${u}`;
+      if (corridorSelect.querySelector(`option[value="${optVal1}"]`)) {
+        corridorSelect.value = optVal1;
+      } else if (corridorSelect.querySelector(`option[value="${optVal2}"]`)) {
+        corridorSelect.value = optVal2;
+      }
+    }
 
     const nodeMap = {};
     if (currentNetwork && currentNetwork.nodes) {
@@ -288,16 +317,20 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
     }
 
-    const isValid = edgeSet.has(`${u}_${v}`) || edgeSet.has(`${v}_${u}`);
+    const isDirect = edgeSet.has(`${u}_${v}`) || edgeSet.has(`${v}_${u}`);
 
     if (preview) {
-      if (isValid) {
-        preview.innerHTML = `Selected Corridor: <strong>${uName} (Node ${u})</strong> &harr; <strong>${vName} (Node ${v})</strong> <span style="color:#10b981; font-weight:bold;">✔ Connected Highway Link</span>`;
+      if (isDirect) {
+        preview.innerHTML = `Selected Corridor: <strong>${uName}</strong> &harr; <strong>${vName}</strong> <span style="color:#10b981; font-weight:bold;">✔ Connected Highway Link</span>`;
         if (submitBtn) submitBtn.disabled = false;
         mapView.highlightEdge(u, v);
-      } else {
-        preview.innerHTML = `<span style="color:#ef4444; font-weight:bold;">⚠️ DISCONNECTED PORTION:</span> No direct road connects <strong>${uName}</strong> and <strong>${vName}</strong>. Please choose a connected corridor from the dropdown above.`;
+      } else if (u === v) {
+        preview.innerHTML = `<span style="color:#f59e0b; font-weight:bold;">⚠️ Please select two different cities to create a roadblock.</span>`;
         if (submitBtn) submitBtn.disabled = true;
+        mapView.clearHighlightEdge();
+      } else {
+        preview.innerHTML = `Selected Corridor: <strong>${uName}</strong> &harr; <strong>${vName}</strong> <span style="color:#06b6d4; font-weight:bold;">✔ Connecting Highway Route (Multi-hop)</span>`;
+        if (submitBtn) submitBtn.disabled = false;
         mapView.clearHighlightEdge();
       }
     }
@@ -333,6 +366,40 @@ document.addEventListener('DOMContentLoaded', async () => {
     modal.classList.add('active');
   };
 
+  // Global helper for opening incident modal from city node pin click
+  window.openIncidentModalForNode = function(nodeId) {
+    const modal = document.getElementById('incidentModal');
+    if (!modal) return;
+    let neighborId = null;
+    if (currentNetwork && currentNetwork.edges) {
+      const found = currentNetwork.edges.find(e => e.u === nodeId || e.v === nodeId);
+      if (found) {
+        neighborId = found.u === nodeId ? found.v : found.u;
+      }
+    }
+    populateCorridorDropdown(nodeId, neighborId);
+    if (neighborId !== null) setCorridorInputFields(nodeId, neighborId);
+    switchIncidentTab('inject');
+    modal.classList.add('active');
+  };
+
+  // Global helper for blocking a specific road leg directly from route popup
+  window.injectRoadblockFromRouteSelect = function(vehicleId) {
+    const select = document.getElementById(`routeLegSelect_${vehicleId}`);
+    if (!select || !select.value) return;
+    const [u, v] = select.value.split('_').map(Number);
+    window.openIncidentModalForEdge(u, v);
+  };
+
+  // Helper to update KPI metric cards with solution data
+  function updateSolutionKPIs(solution) {
+    if (!solution) return;
+    if (document.getElementById('kpiFitness')) document.getElementById('kpiFitness').innerText = solution.fitness_score?.toFixed(2) || '--';
+    if (document.getElementById('kpiDistance')) document.getElementById('kpiDistance').innerText = `${solution.total_distance_km} km`;
+    if (document.getElementById('kpiTravelTime')) document.getElementById('kpiTravelTime').innerText = `${Math.round(solution.total_travel_time_sec / 60)} min`;
+    if (document.getElementById('kpiCO2')) document.getElementById('kpiCO2').innerText = `${solution.total_co2_kg} kg`;
+  }
+
   // Global helper for clearing a specific incident (not all)
   window.removeSingleIncident = async function(incidentId) {
     try {
@@ -341,8 +408,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         currentNetwork.incidents = res.incidents || [];
         mapView.renderIncidents(currentNetwork.incidents, currentNetwork);
       }
+      if (res.solution) {
+        currentSolution = res.solution;
+        mapView.renderRoutes(res.routes || res.solution.routes, currentNetwork);
+        updateSolutionKPIs(res.solution);
+      }
       updateRoadblockBadges();
-      appendEventLog(`✅ <strong style="color:#10b981;">ROADBLOCK REMOVED</strong>: Cleared specific roadblock corridor. Free-flow traffic restored.`, '#10b981');
+      appendEventLog(`✅ <strong style="color:#10b981;">ROADBLOCK REMOVED</strong>: Cleared roadblock. Traffic restored to free-flow velocity.`, '#10b981');
     } catch (e) {
       alert(`Failed to remove roadblock: ${e.message}`);
     }
@@ -392,41 +464,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  document.getElementById('incidentNodeU')?.addEventListener('input', () => {
-    const u = parseInt(document.getElementById('incidentNodeU').value);
-    const v = parseInt(document.getElementById('incidentNodeV').value);
+  document.getElementById('incidentCityFrom')?.addEventListener('change', (e) => {
+    const u = parseInt(e.target.value);
+    const v = parseInt(document.getElementById('incidentCityTo').value);
     if (!isNaN(u) && !isNaN(v)) setCorridorInputFields(u, v);
   });
 
-  document.getElementById('incidentNodeV')?.addEventListener('input', () => {
-    const u = parseInt(document.getElementById('incidentNodeU').value);
-    const v = parseInt(document.getElementById('incidentNodeV').value);
+  document.getElementById('incidentCityTo')?.addEventListener('change', (e) => {
+    const u = parseInt(document.getElementById('incidentCityFrom').value);
+    const v = parseInt(e.target.value);
     if (!isNaN(u) && !isNaN(v)) setCorridorInputFields(u, v);
   });
 
   // Confirm injection of specific blocked portion
   document.getElementById('btnConfirmInjectIncident')?.addEventListener('click', async () => {
+    const submitBtn = document.getElementById('btnConfirmInjectIncident');
     const u = parseInt(document.getElementById('incidentNodeU').value);
     const v = parseInt(document.getElementById('incidentNodeV').value);
     const delay = parseFloat(document.getElementById('incidentDelaySelect').value) || 900.0;
     const severity = parseFloat(document.getElementById('incidentSeveritySelect').value) || 0.95;
     const desc = document.getElementById('incidentDescription').value || 'Traffic Roadblock';
 
-    if (isNaN(u) || isNaN(v)) {
-      alert('Please enter or select valid Start and End node IDs for the roadblock.');
-      return;
-    }
-
-    const edgeSet = new Set();
-    if (currentNetwork && currentNetwork.edges) {
-      currentNetwork.edges.forEach(e => {
-        edgeSet.add(`${e.u}_${e.v}`);
-        edgeSet.add(`${e.v}_${e.u}`);
-      });
-    }
-
-    if (!edgeSet.has(`${u}_${v}`) && !edgeSet.has(`${v}_${u}`)) {
-      alert(`Cannot block corridor: No direct road link connects Node ${u} and Node ${v}. Please select a connected highway corridor from the dropdown.`);
+    if (isNaN(u) || isNaN(v) || u === v) {
+      alert('Please select two different cities or hubs for the roadblock.');
       return;
     }
 
@@ -437,25 +497,38 @@ document.addEventListener('DOMContentLoaded', async () => {
     const uName = nodeMap[u]?.name || `Node ${u}`;
     const vName = nodeMap[v]?.name || `Node ${v}`;
 
+    const originalBtnText = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '&#8987; Computing Quantum Detour...';
+
     try {
       const res = await API.addIncident({
         edge_u: u,
         edge_v: v,
         severity: severity,
         delay_seconds: delay,
-        duration_seconds: 3600.0,
+        duration_seconds: 604800.0,
         description: `${desc}: ${uName} ↔ ${vName}`,
       });
 
       currentNetwork.incidents = res.incidents || [res.incident];
       mapView.renderIncidents(currentNetwork.incidents, currentNetwork);
       mapView.clearHighlightEdge();
+
+      // Dynamically re-render the detoured routes on the map
+      if (res.routes && res.routes.length > 0) {
+        if (res.solution) currentSolution = res.solution;
+        else if (currentSolution) currentSolution.routes = res.routes;
+        mapView.renderRoutes(res.routes, currentNetwork);
+        updateSolutionKPIs(res.solution || currentSolution);
+      }
+
       updateRoadblockBadges();
       incidentModal.classList.remove('active');
 
       const delayMin = Math.round(delay / 60);
       appendEventLog(`⚠️ <strong style="color:#ef4444;">ROADBLOCK INJECTED</strong>: Corridor <strong>${uName}</strong> &harr; <strong>${vName}</strong> (+${delayMin} min delay, ${(severity*100).toFixed(0)}% blockage).`, '#ef4444');
-      appendEventLog(`⚡ <strong style="color:#06b6d4;">QUANTUM OBSERVER</strong>: Live rerouting algorithm engaged. Monitoring fleet trajectory...`, '#06b6d4');
+      appendEventLog(`⚡ <strong style="color:#10b981;">QUANTUM DETOUR ENGAGED</strong>: Real-world road fleet route dynamically bypassed roadblock corridor!`, '#10b981');
 
       if (res.reroute_events && res.reroute_events.length > 0) {
         res.reroute_events.forEach(evt => {
@@ -464,6 +537,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     } catch (e) {
       alert(`Failed to add roadblock: ${e.message}`);
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalBtnText;
     }
   });
 
@@ -492,10 +568,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btnClearAllBlocksModal')?.addEventListener('click', async () => {
     if (!confirm('Are you sure you want to clear ALL active roadblocks on the network?')) return;
     try {
-      await API.clearIncidents();
+      const res = await API.clearIncidents();
       if (currentNetwork) {
         currentNetwork.incidents = [];
         mapView.renderIncidents([], currentNetwork);
+      }
+      if (res.solution) {
+        currentSolution = res.solution;
+        mapView.renderRoutes(res.routes || res.solution.routes, currentNetwork);
+        updateSolutionKPIs(res.solution);
       }
       updateRoadblockBadges();
       incidentModal.classList.remove('active');

@@ -45,16 +45,28 @@ const API = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `Failed to add roadblock (HTTP ${res.status})`);
+    }
     return await res.json();
   },
 
   async removeIncident(incidentId) {
     const res = await fetch(`/api/incident/${incidentId}`, { method: 'DELETE' });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `Failed to remove roadblock (HTTP ${res.status})`);
+    }
     return await res.json();
   },
 
   async clearIncidents() {
     const res = await fetch('/api/incident/clear', { method: 'POST' });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `Failed to clear roadblocks (HTTP ${res.status})`);
+    }
     return await res.json();
   },
 
